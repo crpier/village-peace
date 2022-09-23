@@ -4,6 +4,7 @@ import dataclasses
 from typing import List
 
 import websockets.server
+import websockets.exceptions
 import websockets
 
 
@@ -25,6 +26,10 @@ def smth_to_dict(smth: Smth):
 
 class House(Smth):
     type = "House"
+
+
+class Grass(Smth):
+    type = "Grass"
 
 
 class WorldMap:
@@ -70,8 +75,19 @@ world1.add_smth(House(Loc(20, 14)))
 world1.add_smth(House(Loc(20, 5)))
 world1.add_smth(House(Loc(20, 20)))
 
+
+def add_grass_everywhere(world: WorldMap):
+    for i in range(20):
+        for j in range(20):
+            world.add_smth(Grass(Loc(i, j)))
+
+
+add_grass_everywhere(world1)
+
+
 stuff = world1.get_stuff_in_zone(Loc(0, 0), Loc(20, 20))
 printable_stuff = [smth_to_dict(thing) for thing in stuff]
+print(printable_stuff)
 
 
 async def handler(websocket: websockets.server.WebSocketServerProtocol):
@@ -80,6 +96,7 @@ async def handler(websocket: websockets.server.WebSocketServerProtocol):
         try:
             event = json.loads(message)
             if event["type"] == "event" and event["event"] == "connection":
+                print("Sending some data")
                 await websocket.send(
                     json.dumps(
                         dict(
@@ -96,6 +113,12 @@ async def handler(websocket: websockets.server.WebSocketServerProtocol):
                     dict(type="error", message="unJSONable data sent!", data=message)
                 )
             )
+        except websockets.exceptions.ConnectionClosedOK as e:
+            print("Why is this an error?")
+            print(e)
+        except websockets.exceptions.ConnectionClosedError as e:
+            print("Why is this an error?")
+            print(e)
 
 
 async def main():

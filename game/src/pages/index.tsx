@@ -1,16 +1,40 @@
 import type { NextPage } from "next";
 import Head from "next/head";
+import { useEffect, useState } from "react";
 
-const Home: NextPage = () => {
-  const worldHeight = 9
-  const worldWidth = 19
+const Home: NextPage = (props) => {
+  const worldHeight = 30
+  const worldWidth = 30
+  const [houseMap, setHouseMap] = useState(Array(worldHeight).fill(Array(worldWidth).fill(0)))
   const grassMap = Array(worldHeight).fill(Array(worldWidth).fill(1))
-  const houseMap = Array.from({ length: worldHeight }, () => (Array.from({ length: worldWidth }, () => Math.floor(Math.random() * 2))))
-  const championMap = Array.from({ length: worldHeight }, () => (Array.from({ length: worldWidth }, () => Math.floor(Math.random() * 2))))
-  const barrackMap = Array.from({ length: worldHeight }, () => (Array.from({ length: worldWidth }, () => Math.floor(Math.random() * 2))))
-  const soldierMap = Array.from({ length: worldHeight }, () => (Array.from({ length: worldWidth }, () => Math.floor(Math.random() * 2))))
-  const towerMap = Array.from({ length: worldHeight }, () => (Array.from({ length: worldWidth }, () => Math.floor(Math.random() * 2))))
+  const championMap = Array(worldHeight).fill(Array(worldWidth).fill(0))
+  const barrackMap = Array(worldHeight).fill(Array(worldWidth).fill(0))
+  const soldierMap = Array(worldHeight).fill(Array(worldWidth).fill(0))
+  const towerMap = Array(worldHeight).fill(Array(worldWidth).fill(0))
 
+  useEffect(() => {
+    let ws = new WebSocket("ws://localhost:8000")
+    ws.onopen = (event) => {
+      ws.send(JSON.stringify({ type: "event", event: "connection", data: "some string or smth" }))
+    }
+    ws.onmessage = (message) => {
+      let data = JSON.parse(message.data)
+      for (let item of data.data) {
+        houseMap[item.loc.row][item.loc.col] = 1
+        console.log(houseMap)
+      }
+
+    }
+  }, [])
+
+
+
+
+  // const houseMap = Array.from({ length: worldHeight }, () => (Array.from({ length: worldWidth }, () => Math.floor(Math.random() * 2))))
+  // const championMap = Array.from({ length: worldHeight }, () => (Array.from({ length: worldWidth }, () => Math.floor(Math.random() * 2))))
+  // const barrackMap = Array.from({ length: worldHeight }, () => (Array.from({ length: worldWidth }, () => Math.floor(Math.random() * 2))))
+  // const soldierMap = Array.from({ length: worldHeight }, () => (Array.from({ length: worldWidth }, () => Math.floor(Math.random() * 2))))
+  // const towerMap = Array.from({ length: worldHeight }, () => (Array.from({ length: worldWidth }, () => Math.floor(Math.random() * 2))))
 
   return (
     <>
@@ -23,32 +47,32 @@ const Home: NextPage = () => {
       <main className="container mx-auto flex flex-col items-center justify-center min-h-screen p-4">
         {houseMap.map((row: Array<number>, rowIndex: number) => (
           row.map((value: number, colIndex: number) => (
-            value !== 0 && <House top={(rowIndex)} left={(colIndex)} />
+            value !== 0 && <House key={`${rowIndex}${colIndex}`} top={(rowIndex)} left={(colIndex)} />
           ))
         ))}
         {grassMap.map((row: Array<number>, rowIndex: number) => (
           row.map((value: number, colIndex: number) => (
-            value !== 0 && <Tile top={(rowIndex)} left={(colIndex)} />
+            value !== 0 && <Tile key={`${rowIndex}${colIndex}`} top={(rowIndex)} left={(colIndex)} />
           ))
         ))}
         {championMap.map((row: Array<number>, rowIndex: number) => (
           row.map((value: number, colIndex: number) => (
-            value !== 0 && <Champion top={(rowIndex)} left={(colIndex)} />
+            value !== 0 && <Champion key={`${rowIndex}${colIndex}`} top={(rowIndex)} left={(colIndex)} />
           ))
         ))}
         {barrackMap.map((row: Array<number>, rowIndex: number) => (
           row.map((value: number, colIndex: number) => (
-            value !== 0 && <Barrack top={(rowIndex)} left={(colIndex)} />
+            value !== 0 && <Barrack key={`${rowIndex}${colIndex}`} top={(rowIndex)} left={(colIndex)} />
           ))
         ))}
         {soldierMap.map((row: Array<number>, rowIndex: number) => (
           row.map((value: number, colIndex: number) => (
-            value !== 0 && <Soldier top={(rowIndex)} left={(colIndex)} />
+            value !== 0 && <Soldier key={`${rowIndex}${colIndex}`} top={(rowIndex)} left={(colIndex)} />
           ))
         ))}
         {towerMap.map((row: Array<number>, rowIndex: number) => (
           row.map((value: number, colIndex: number) => (
-            value !== 0 && <Tower top={(rowIndex)} left={(colIndex)} />
+            value !== 0 && <Tower key={`${rowIndex}${colIndex}`} top={(rowIndex)} left={(colIndex)} />
           ))
         ))}
       </main>

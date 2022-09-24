@@ -1,3 +1,4 @@
+import { writeSync } from "fs";
 import type { NextPage } from "next";
 import Head from "next/head";
 import { useEffect, useState, Component } from "react";
@@ -12,14 +13,21 @@ const type_to_props: any = {
   "Soldier": { sprite: "soldier.png", style: { height: 48, width: 48, position: "absolute", zIndex: 1, marginLeft: 10, marginTop: 20 } },
 }
 
-function Thing(props: { left: number, top: number, type: string }) {
+function Thing(props: { left: number, top: number, type: string, ws: WebSocket }) {
   // TODO: this should be a map really
   let style = { ...type_to_props[props.type].style }
   style.left = 48 + props.left * 96
   style.top = 48 + props.top * 96
 
-  // @ts-ignore
-  return (<img src={type_to_props[props.type].sprite} style={style} />);
+  function doSmth() {
+    const notification = JSON.stringify({
+      type: "event",
+      event: "delete",
+      data: JSON.stringify({type: props.type, col: props.left, row: props.top})
+    })
+    props.ws.send(notification)
+  }
+  return (<img src={type_to_props[props.type].sprite} style={style} onClick={doSmth}/>);
 }
 
 class World extends Component {
@@ -42,7 +50,9 @@ class World extends Component {
     }
     this.ws.onmessage = (message: any) => {
       let data = JSON.parse(message.data)
-      this.setState({ items: data.data })
+      if (data.type == "info") {
+        this.setState({ items: data.data })
+      }
       console.log(this.state)
     }
   }
@@ -54,8 +64,8 @@ class World extends Component {
   render() {
     return <main className="container mx-auto flex flex-col items-center justify-center min-h-screen p-4">
       {/* @ts-ignore */}
-      {this.state.items.map((item: any) => (
-        <Thing type={item.type} left={item.loc.col} top={item.loc.row} key={`${item.type}:${item.loc.row}-${item.loc.col}`} />
+      {this.state.items?.map((item: any) => (
+        <Thing type={item.type} left={item.loc.col} top={item.loc.row} key={`${item.type}:${item.loc.row}-${item.loc.col}`} ws={this.ws}/>
       ))}
     </main>
   }

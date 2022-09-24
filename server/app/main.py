@@ -55,6 +55,11 @@ class WorldMap:
     def add_smth(self, smth: Smth):
         self._stuff.append(smth)
 
+    def del_smth(self, type: str, loc: Loc):
+        for item in self._stuff:
+            if item.loc == loc and item.type == type:
+                self._stuff.remove(item)
+
     def get_stuff_in_zone(self, top_left: Loc, bot_right: Loc):
         return [
             item
@@ -91,10 +96,10 @@ world1.add_smth(House(Loc(20, 14)))
 world1.add_smth(House(Loc(20, 5)))
 world1.add_smth(House(Loc(20, 20)))
 
-world1.add_smth(Champion(Loc(1,1)))
-world1.add_smth(Barrack(Loc(2,2)))
-world1.add_smth(Tower(Loc(3,3)))
-world1.add_smth(Soldier(Loc(4,4)))
+world1.add_smth(Champion(Loc(1, 1)))
+world1.add_smth(Barrack(Loc(2, 2)))
+world1.add_smth(Tower(Loc(3, 3)))
+world1.add_smth(Soldier(Loc(4, 4)))
 
 
 def add_grass_everywhere(world: WorldMap):
@@ -106,9 +111,8 @@ def add_grass_everywhere(world: WorldMap):
 add_grass_everywhere(world1)
 
 
-stuff = world1.get_stuff_in_zone(Loc(0, 0), Loc(8, 17))
+stuff = world1.get_stuff_in_zone(Loc(0, 0), Loc(3, 3))
 printable_stuff = [smth_to_dict(thing) for thing in stuff]
-print(printable_stuff)
 
 
 async def handler(websocket: websockets.server.WebSocketServerProtocol):
@@ -117,23 +121,39 @@ async def handler(websocket: websockets.server.WebSocketServerProtocol):
         try:
             event = json.loads(message)
             if event["type"] == "event" and event["event"] == "connection":
-                print("Sending some data")
-                await websocket.send(
-                    json.dumps(
-                        dict(
-                            type="info",
-                            meta="stuff in zone for 0x0 20x20",
-                            data=printable_stuff,
-                        )
+                response = json.dumps(
+                    dict(
+                        type="info",
+                        meta="stuff in zone for 0x0 20x20",
+                        data=printable_stuff,
                     )
                 )
-        except json.JSONDecodeError:
-            print(f"unJSONable data was sent {message=}")
-            await websocket.send(
-                json.dumps(
-                    dict(type="error", message="unJSONable data sent!", data=message)
+                print(f"{response=}")
+                await websocket.send(response)
+            elif event["type"] == "event" and event["event"] == "delete":
+                data = json.loads(event["data"])
+                del_loc = Loc(data["row"], data["col"])
+                del_type = data["type"]
+                world1.del_smth(del_type, del_loc)
+                response = json.dumps(
+                    dict(
+                        type="info",
+                        meta="stuff in zone for 0x0 20x20",
+                        data=[
+                            smth_to_dict(thing)
+                            for thing in world1.get_stuff_in_zone(Loc(0, 0), Loc(3, 3))
+                        ],
+                    )
                 )
+                print(f"{response=}")
+                await websocket.send(response)
+        except json.JSONDecodeError:
+            response = json.dumps(
+                dict(type="error", message="unJSONable data sent!", data=message)
             )
+
+            print(f"{response=}")
+            await websocket.send(response)
         except websockets.exceptions.ConnectionClosedOK as e:
             print("Why is this an error?")
             print(e)
@@ -146,7 +166,6 @@ async def main():
     async with websockets.server.serve(handler, "", 8000):
         print("Starting websocket server")
         await asyncio.Future()
-        print("Done something")
 
 
 if __name__ == "__main__":

@@ -32,6 +32,22 @@ class Grass(Smth):
     type = "Grass"
 
 
+class Champion(Smth):
+    type = "Champion"
+
+
+class Barrack(Smth):
+    type = "Barrack"
+
+
+class Tower(Smth):
+    type = "Tower"
+
+
+class Soldier(Smth):
+    type = "Soldier"
+
+
 class WorldMap:
     def __init__(self) -> None:
         self._stuff: List[Smth] = []
@@ -75,6 +91,11 @@ world1.add_smth(House(Loc(20, 14)))
 world1.add_smth(House(Loc(20, 5)))
 world1.add_smth(House(Loc(20, 20)))
 
+world1.add_smth(Champion(Loc(1,1)))
+world1.add_smth(Barrack(Loc(2,2)))
+world1.add_smth(Tower(Loc(3,3)))
+world1.add_smth(Soldier(Loc(4,4)))
+
 
 def add_grass_everywhere(world: WorldMap):
     for i in range(20):
@@ -85,7 +106,7 @@ def add_grass_everywhere(world: WorldMap):
 add_grass_everywhere(world1)
 
 
-stuff = world1.get_stuff_in_zone(Loc(0, 0), Loc(20, 20))
+stuff = world1.get_stuff_in_zone(Loc(0, 0), Loc(8, 17))
 printable_stuff = [smth_to_dict(thing) for thing in stuff]
 print(printable_stuff)
 

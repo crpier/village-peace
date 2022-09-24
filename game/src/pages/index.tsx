@@ -3,16 +3,23 @@ import Head from "next/head";
 import { useEffect, useState, Component } from "react";
 import internal from "stream";
 
+const type_to_props: any = {
+  "Grass": { sprite: "grass.png", style: { height: 96, width: 96, position: "absolute", zIndex: 0 } },
+  "House": { sprite: "house.png", style: { height: 48, width: 48, position: "absolute", zIndex: 1, marginLeft: 10, marginTop: 20 } },
+  "Champion": { sprite: "champion.png", style: { height: 48, width: 48, position: "absolute", zIndex: 1, marginLeft: 10, marginTop: 20 } },
+  "Barrack": { sprite: "barrack.png", style: { height: 72, width: 72, position: "absolute", zIndex: 1, marginLeft: 12, marginTop: 12 } },
+  "Tower": { sprite: "tower.png", style: { height: 72, width: 72, marginLeft: 12, marginTop: 12, position: "absolute", zIndex: 1 } },
+  "Soldier": { sprite: "soldier.png", style: { height: 48, width: 48, position: "absolute", zIndex: 1, marginLeft: 10, marginTop: 20 } },
+}
 
 function Thing(props: { left: number, top: number, type: string }) {
   // TODO: this should be a map really
-  let type_to_propes: { [key: string]: { [key: string]: string | number } } = {
-    "House": { sprite: "house.png", zIndex: 1 },
-    "Grass": { sprite: "grass.png", zIndex: 0 }
-  }
+  let style = { ...type_to_props[props.type].style }
+  style.left = 48 + props.left * 96
+  style.top = 48 + props.top * 96
 
   // @ts-ignore
-  return (<img src={type_to_propes[props.type].sprite} key={`${props.top}-${props.left}`} style={{ height: 96, width: 96, position: "absolute", left: 48 + props.left * 96, top: 48 + props.top * 96, zIndex: type_to_propes[props.type].zIndex }} />);
+  return (<img src={type_to_props[props.type].sprite} style={style} />);
 }
 
 class World extends Component {
@@ -28,9 +35,10 @@ class World extends Component {
   componentDidMount() {
     this.ws = new WebSocket("ws://localhost:8000")
     this.ws.onopen = (event: any) => {
-      setInterval(() => (
+      // is this a workaround or proper react etiquette?
+      setTimeout(() => (
         this.ws.send(JSON.stringify({ type: "event", event: "connection", data: "some string or smth" }))
-      ), 2000)
+      ), 100)
     }
     this.ws.onmessage = (message: any) => {
       let data = JSON.parse(message.data)
@@ -47,7 +55,7 @@ class World extends Component {
     return <main className="container mx-auto flex flex-col items-center justify-center min-h-screen p-4">
       {/* @ts-ignore */}
       {this.state.items.map((item: any) => (
-        <Thing type={item.type} left={item.loc.col} top={item.loc.row} />
+        <Thing type={item.type} left={item.loc.col} top={item.loc.row} key={`${item.type}:${item.loc.row}-${item.loc.col}`} />
       ))}
     </main>
   }

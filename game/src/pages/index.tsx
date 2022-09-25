@@ -1,3 +1,4 @@
+/* eslint-disable */
 import type { NextPage } from "next";
 import Head from "next/head";
 import { Component, useState } from "react";
@@ -213,3 +214,4 @@ const Home: NextPage = (_) => {
 };
 
 export default Home;
+/* eslint-disable */

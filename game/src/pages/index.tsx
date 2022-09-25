@@ -41,7 +41,7 @@ class World extends Component<WorldProps, WorldState> {
   }
 
   componentDidMount() {
-    ws = new WebSocket("ws://village-peace-production.up.railway.app");
+    ws = new WebSocket("wss://village-peace-production.up.railway.app");
     ws.onopen = (_) => {
       // is this a workaround or proper react etiquette?
       setTimeout(() => {

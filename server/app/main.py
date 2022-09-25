@@ -119,10 +119,10 @@ async def handler(websocket: websockets.server.WebSocketServerProtocol):
         message = await websocket.recv()
         try:
             event = json.loads(message)
-            if event["type"] == "event" and event["event"] == "connection":
+            if event["type"] == "Connect":
                 response = json.dumps(
                     dict(
-                        type="info",
+                        type="Update",
                         meta="stuff in zone for 0x0 20x20",
                         data=[
                             smth_to_dict(thing)
@@ -130,7 +130,7 @@ async def handler(websocket: websockets.server.WebSocketServerProtocol):
                         ],
                     )
                 )
-                pprint(f"{response=}")
+                # pprint(f"{response=}")
                 await websocket.send(response)
             elif event["type"] == "event":
                 data = json.loads(event["data"])
@@ -141,7 +141,7 @@ async def handler(websocket: websockets.server.WebSocketServerProtocol):
                     world1.del_smth(del_type, del_loc)
                     response = json.dumps(
                         dict(
-                            type="info",
+                            type="Update",
                             meta="stuff in zone for 0x0 20x20",
                             data=[
                                 smth_to_dict(thing)
@@ -151,24 +151,28 @@ async def handler(websocket: websockets.server.WebSocketServerProtocol):
                             ],
                         )
                     )
-                    pprint(f"{response=}")
+                    # pprint(f"{response=}")
                     await websocket.send(response)
                 elif event["event"] == "create":
                     print(f"\n\n\nCreating smth on {data['row']}:{data['col']}")
-                    world1.add_smth(
-                        random.choice(
-                            [
-                                House(Loc(data["row"], data["col"])),
-                                Champion(Loc(data["row"], data["col"])),
-                                Barrack(Loc(data["row"], data["col"])),
-                                Tower(Loc(data["row"], data["col"])),
-                                Soldier(Loc(data["row"], data["col"])),
-                            ]
-                        )
-                    )
+                    pprint(data)
+                    match data["type"]:
+                        case "House":
+                            thing_to_add = House(Loc(data["row"], data["col"]))
+                        case "Champion":
+                            thing_to_add = Champion(Loc(data["row"], data["col"]))
+                        case "Barrack":
+                            thing_to_add = Barrack(Loc(data["row"], data["col"]))
+                        case "Tower":
+                            thing_to_add = Tower(Loc(data["row"], data["col"]))
+                        case "Soldier":
+                            thing_to_add = Soldier(Loc(data["row"], data["col"]))
+                        case _:
+                            thing_to_add = House(Loc(data["row"], data["col"]))
+                    world1.add_smth(thing_to_add)
                     response = json.dumps(
                         dict(
-                            type="info",
+                            type="Update",
                             meta="stuff in zone for 0x0 20x20",
                             data=[
                                 smth_to_dict(thing)
@@ -178,14 +182,14 @@ async def handler(websocket: websockets.server.WebSocketServerProtocol):
                             ],
                         )
                     )
-                    pprint(f"{response=}")
+                    # pprint(f"{response=}")
                     await websocket.send(response)
         except json.JSONDecodeError:
             response = json.dumps(
                 dict(type="error", message="unJSONable data sent!", data=message)
             )
 
-            pprint(f"{response=}")
+            # pprint(f"{response=}")
             await websocket.send(response)
         except websockets.exceptions.ConnectionClosedOK as e:
             print("Why is this an error?")
@@ -196,8 +200,8 @@ async def handler(websocket: websockets.server.WebSocketServerProtocol):
 
 
 async def main():
-    port = os.getenv("PORT", 8000)
-    print(f"Listening on port ${port}")
+    port = int(os.getenv("PORT", 8000))
+    print(f"Listening on port {port}")
     async with websockets.server.serve(handler, "", port):
         print("Starting websocket server")
         await asyncio.Future()

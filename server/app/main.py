@@ -113,7 +113,7 @@ def add_grass_everywhere(world: WorldMap):
 add_grass_everywhere(world1)
 
 
-stuff = world1.get_stuff_in_zone(Loc(0, 0), Loc(3,3))
+stuff = world1.get_stuff_in_zone(Loc(0, 0), Loc(6, 10))
 printable_stuff = [smth_to_dict(thing) for thing in stuff]
 
 
@@ -146,7 +146,7 @@ async def handler(websocket: websockets.server.WebSocketServerProtocol):
                             data=[
                                 smth_to_dict(thing)
                                 for thing in world1.get_stuff_in_zone(
-                                    Loc(0, 0), Loc(3,3)
+                                    Loc(0, 0), Loc(6, 10)
                                 )
                             ],
                         )
@@ -173,7 +173,7 @@ async def handler(websocket: websockets.server.WebSocketServerProtocol):
                             data=[
                                 smth_to_dict(thing)
                                 for thing in world1.get_stuff_in_zone(
-                                    Loc(0, 0), Loc(3,3)
+                                    Loc(0, 0), Loc(6, 10)
                                 )
                             ],
                         )

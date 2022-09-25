@@ -2,6 +2,8 @@ import asyncio
 import json
 import dataclasses
 from typing import List
+import random
+from pprint import pprint
 
 import websockets.server
 import websockets.exceptions
@@ -111,7 +113,7 @@ def add_grass_everywhere(world: WorldMap):
 add_grass_everywhere(world1)
 
 
-stuff = world1.get_stuff_in_zone(Loc(0, 0), Loc(3, 3))
+stuff = world1.get_stuff_in_zone(Loc(0, 0), Loc(3,3))
 printable_stuff = [smth_to_dict(thing) for thing in stuff]
 
 
@@ -128,31 +130,62 @@ async def handler(websocket: websockets.server.WebSocketServerProtocol):
                         data=printable_stuff,
                     )
                 )
-                print(f"{response=}")
+                pprint(f"{response=}")
                 await websocket.send(response)
-            elif event["type"] == "event" and event["event"] == "delete":
+            elif event["type"] == "event":
                 data = json.loads(event["data"])
-                del_loc = Loc(data["row"], data["col"])
-                del_type = data["type"]
-                world1.del_smth(del_type, del_loc)
-                response = json.dumps(
-                    dict(
-                        type="info",
-                        meta="stuff in zone for 0x0 20x20",
-                        data=[
-                            smth_to_dict(thing)
-                            for thing in world1.get_stuff_in_zone(Loc(0, 0), Loc(3, 3))
-                        ],
+                if event["event"] == "delete":
+                    print("\n\n\nDeleting")
+                    del_loc = Loc(data["row"], data["col"])
+                    del_type = data["type"]
+                    world1.del_smth(del_type, del_loc)
+                    response = json.dumps(
+                        dict(
+                            type="info",
+                            meta="stuff in zone for 0x0 20x20",
+                            data=[
+                                smth_to_dict(thing)
+                                for thing in world1.get_stuff_in_zone(
+                                    Loc(0, 0), Loc(3,3)
+                                )
+                            ],
+                        )
                     )
-                )
-                print(f"{response=}")
-                await websocket.send(response)
+                    pprint(f"{response=}")
+                    await websocket.send(response)
+                elif event["event"] == "create":
+                    print(f"\n\n\nCreating smth on {data['row']}:{data['col']}")
+                    world1.add_smth(
+                        random.choice(
+                            [
+                                House(Loc(data["row"], data["col"])),
+                                Champion(Loc(data["row"], data["col"])),
+                                Barrack(Loc(data["row"], data["col"])),
+                                Tower(Loc(data["row"], data["col"])),
+                                Soldier(Loc(data["row"], data["col"])),
+                            ]
+                        )
+                    )
+                    response = json.dumps(
+                        dict(
+                            type="info",
+                            meta="stuff in zone for 0x0 20x20",
+                            data=[
+                                smth_to_dict(thing)
+                                for thing in world1.get_stuff_in_zone(
+                                    Loc(0, 0), Loc(3,3)
+                                )
+                            ],
+                        )
+                    )
+                    pprint(f"{response=}")
+                    await websocket.send(response)
         except json.JSONDecodeError:
             response = json.dumps(
                 dict(type="error", message="unJSONable data sent!", data=message)
             )
 
-            print(f"{response=}")
+            pprint(f"{response=}")
             await websocket.send(response)
         except websockets.exceptions.ConnectionClosedOK as e:
             print("Why is this an error?")

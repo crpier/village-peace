@@ -76,42 +76,45 @@ class WorldMap:
         ]
 
 
-world1 = WorldMap()
-world1.add_smth(House(Loc(0, 0)))
-world1.add_smth(House(Loc(9, 9)))
-world1.add_smth(House(Loc(3, 11)))
-world1.add_smth(House(Loc(3, 6)))
-world1.add_smth(House(Loc(5, 1)))
-world1.add_smth(House(Loc(5, 13)))
-world1.add_smth(House(Loc(5, 7)))
-world1.add_smth(House(Loc(7, 17)))
-world1.add_smth(House(Loc(7, 8)))
-world1.add_smth(House(Loc(12, 2)))
-world1.add_smth(House(Loc(12, 3)))
-world1.add_smth(House(Loc(13, 13)))
-world1.add_smth(House(Loc(13, 17)))
-world1.add_smth(House(Loc(14, 18)))
-world1.add_smth(House(Loc(15, 18)))
-world1.add_smth(House(Loc(16, 4)))
-world1.add_smth(House(Loc(17, 9)))
-world1.add_smth(House(Loc(18, 11)))
-world1.add_smth(House(Loc(20, 14)))
-world1.add_smth(House(Loc(20, 5)))
-world1.add_smth(House(Loc(20, 20)))
-
-world1.add_smth(Champion(Loc(1, 1)))
-world1.add_smth(Barrack(Loc(2, 2)))
-world1.add_smth(Tower(Loc(3, 3)))
-world1.add_smth(Soldier(Loc(4, 4)))
-
-
 def add_grass_everywhere(world: WorldMap):
     for i in range(20):
         for j in range(20):
             world.add_smth(Grass(Loc(i, j)))
 
 
-add_grass_everywhere(world1)
+def make_new_world():
+    world = WorldMap()
+    world.add_smth(House(Loc(0, 0)))
+    world.add_smth(House(Loc(9, 9)))
+    world.add_smth(House(Loc(3, 11)))
+    world.add_smth(House(Loc(3, 6)))
+    world.add_smth(House(Loc(5, 1)))
+    world.add_smth(House(Loc(5, 13)))
+    world.add_smth(House(Loc(5, 7)))
+    world.add_smth(House(Loc(7, 17)))
+    world.add_smth(House(Loc(7, 8)))
+    world.add_smth(House(Loc(12, 2)))
+    world.add_smth(House(Loc(12, 3)))
+    world.add_smth(House(Loc(13, 13)))
+    world.add_smth(House(Loc(13, 17)))
+    world.add_smth(House(Loc(14, 18)))
+    world.add_smth(House(Loc(15, 18)))
+    world.add_smth(House(Loc(16, 4)))
+    world.add_smth(House(Loc(17, 9)))
+    world.add_smth(House(Loc(18, 11)))
+    world.add_smth(House(Loc(20, 14)))
+    world.add_smth(House(Loc(20, 5)))
+    world.add_smth(House(Loc(20, 20)))
+
+    world.add_smth(Champion(Loc(1, 1)))
+    world.add_smth(Barrack(Loc(2, 2)))
+    world.add_smth(Tower(Loc(3, 3)))
+    world.add_smth(Soldier(Loc(4, 4)))
+    add_grass_everywhere(world)
+    return world
+
+
+world1 = make_new_world()
 
 
 async def handler(websocket: websockets.server.WebSocketServerProtocol):
@@ -199,10 +202,22 @@ async def handler(websocket: websockets.server.WebSocketServerProtocol):
             print(e)
 
 
+async def periodic_wipe():
+    global world1
+    while True:
+        print("Wiping")
+        world1 = make_new_world()
+        await asyncio.sleep(1800)
+
+
 async def main():
     port = int(os.getenv("PORT", 8000))
     print(f"Listening on port {port}")
+    loop = asyncio.get_event_loop()
+    task = loop.create_task(periodic_wipe())
+
     async with websockets.server.serve(handler, "", port):
+        asyncio._register_task(task)
         print("Starting websocket server")
         await asyncio.Future()
 

@@ -4,6 +4,7 @@ import dataclasses
 from typing import List
 import random
 from pprint import pprint
+import os
 
 import websockets.server
 import websockets.exceptions
@@ -196,7 +197,9 @@ async def handler(websocket: websockets.server.WebSocketServerProtocol):
 
 
 async def main():
-    async with websockets.server.serve(handler, "", 8000):
+    port = os.getenv("PORT", 8000)
+    print(f"Listening on port ${port}")
+    async with websockets.server.serve(handler, "", port):
         print("Starting websocket server")
         await asyncio.Future()
 

@@ -138,7 +138,8 @@ async def handler(websocket: websockets.server.WebSocketServerProtocol):
             elif event["type"] == "event":
                 data = json.loads(event["data"])
                 if event["event"] == "delete":
-                    print("\n\n\nDeleting")
+                    print(f"\n\n\nDeleting")
+                    pprint(data)
                     del_loc = Loc(data["row"], data["col"])
                     del_type = data["type"]
                     world1.del_smth(del_type, del_loc)
@@ -157,7 +158,7 @@ async def handler(websocket: websockets.server.WebSocketServerProtocol):
                     # pprint(f"{response=}")
                     await websocket.send(response)
                 elif event["event"] == "create":
-                    print(f"\n\n\nCreating smth on {data['row']}:{data['col']}")
+                    print(f"\n\n\nCreating smth")
                     pprint(data)
                     match data["type"]:
                         case "House":

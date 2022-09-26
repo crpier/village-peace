@@ -65,6 +65,21 @@ class WSClient {
       this.ws.send(notification);
     }
   }
+
+  send_deletion_event(target: { type: string; top: number; left: number }) {
+    if (this.ws) {
+      const notification = JSON.stringify({
+        type: "event",
+        event: "delete",
+        data: JSON.stringify({
+          type: target.type,
+          col: target.left,
+          row: target.top,
+        }),
+      });
+      this.ws.send(notification);
+    }
+  }
   registerCallback(
     serverEventType: ServerEventType,
     callback: (message: MessageEvent<any>) => void
@@ -149,19 +164,20 @@ interface PopupProps {
   target: {
     top: number;
     left: number;
+    type: string;
   };
   popup: { left: number; top: number };
   closeHandler: () => void;
 }
 
-class CreatePopup extends Component<PopupProps, PopupState> {
+class EditPopup extends Component<PopupProps, PopupState> {
   constructor(props: PopupProps) {
     super(props);
     this.state = {};
   }
 
-  createThing = (e: any) => {
-    wsClient.send_creation_event({ ...this.props.target, type: e.target.id });
+  deleteThing = (e: any) => {
+    wsClient.send_deletion_event({ ...this.props.target });
     this.props.closeHandler();
   };
 
@@ -169,9 +185,45 @@ class CreatePopup extends Component<PopupProps, PopupState> {
     return (
       <div
         style={{ position: "absolute", top: 96, left: 96, zIndex: 100 }}
-        className="p-2 bg-yellow-500"
+        className="p-2 bg-yellow-500 w-40"
+      >
+        <p>{this.props.target.type}</p>
+        <div className="h-1 bg-orange-800"></div>
+        <ul>
+          <li
+            onClick={this.deleteThing}
+            className="flex p-1 my-4 hover:bg-yellow-300"
+          >
+            <p className="flex-grow">Sell</p>
+          </li>
+        </ul>
+      </div>
+    );
+  }
+}
+class CreatePopup extends Component<PopupProps, PopupState> {
+  constructor(props: PopupProps) {
+    super(props);
+    this.state = {};
+  }
+
+  createThing = (e: any) => {
+    wsClient.send_creation_event({
+      type: e.target.id,
+      top: this.props.target.top,
+      left: this.props.target.left,
+    });
+    this.props.closeHandler();
+  };
+
+  render() {
+    return (
+      <div
+        style={{ position: "absolute", top: 96, left: 96, zIndex: 100 }}
+        className="p-2 bg-yellow-500 w-40"
       >
         <p>Create Thing</p>
+        <div className="h-1 bg-orange-800"></div>
         <ul>
           <li
             onClick={this.createThing}
@@ -241,20 +293,33 @@ function Thing(props: { left: number; top: number; thingType: string }) {
       left: 48 + props.left * 96,
       top: 48 + props.top * 96,
     };
+    let popup =
+      props.thingType == "Grass" ? (
+        <CreatePopup
+          target={{
+            left: props.left,
+            top: props.top,
+            type: props.thingType,
+          }}
+          popup={{ left: props.left, top: props.top }}
+          closeHandler={closePopup}
+        ></CreatePopup>
+      ) : (
+        <EditPopup
+          target={{
+            left: props.left,
+            top: props.top,
+            type: props.thingType,
+          }}
+          popup={{ left: props.left, top: props.top }}
+          closeHandler={closePopup}
+        ></EditPopup>
+      );
     return (
       <div>
         <img src={thingData.sprite} style={style} onClick={openPopup} />
 
-        {showPopup && (
-          <CreatePopup
-            target={{
-              left: props.left,
-              top: props.top,
-            }}
-            popup={{ left: props.left, top: props.top }}
-            closeHandler={closePopup}
-          ></CreatePopup>
-        )}
+        {showPopup && popup}
       </div>
     );
   } else {

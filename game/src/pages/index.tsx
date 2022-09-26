@@ -9,6 +9,7 @@ enum ClientEventType {
   Connect = "Connect",
   Create = "Create",
   Delete = "Delete",
+  Request = "Request"
 }
 
 enum ServerEventType {
@@ -98,7 +99,7 @@ class WSClient {
 }
 
 // -----Components-----
-interface WorldProps {}
+interface WorldProps { }
 
 interface WorldState {
   items: Array<any>;
@@ -159,7 +160,7 @@ class World extends Component<WorldProps, WorldState> {
   }
 }
 
-interface PopupState {}
+interface PopupState { }
 interface PopupProps {
   target: {
     top: number;
@@ -220,7 +221,7 @@ class CreatePopup extends Component<PopupProps, PopupState> {
     return (
       <div
         style={{ position: "absolute", top: 96, left: 96, zIndex: 100 }}
-        className="p-2 bg-yellow-500 w-40"
+        className="p-2 bg-yellow-500 w-60"
       >
         <p>Create Thing</p>
         <div className="h-1 bg-orange-800"></div>
@@ -229,46 +230,46 @@ class CreatePopup extends Component<PopupProps, PopupState> {
             onClick={this.createThing}
             className="flex p-1 my-4 hover:bg-yellow-300"
           >
-            <p id="House" className="flex-grow">
-              House
+            <p id="House" className="flex-grow flex">
+              House <img className="mx-4 h-6" src="house.png"></img>
             </p>
-            <img className="mx-4" src="house.png"></img>
+            138 <img src="eddie.png" className="h-5 mt-1"></img>
           </li>
           <li
             onClick={this.createThing}
             className="flex p-1 my-4 hover:bg-yellow-300"
           >
-            <p id="Barrack" className="flex-grow">
-              Barrack
+            <p id="Barrack" className="flex-grow flex">
+              Barrack - <img className="mx-4 h-6" src="barrack.png"></img>
             </p>
-            <img className="mx-4" src="barrack.png"></img>
+            489 <img src="eddie.png" className="h-5 mt-1"></img>
           </li>
           <li
             onClick={this.createThing}
             className="flex p-1 my-4 hover:bg-yellow-300"
           >
-            <p id="Tower" className="flex-grow">
-              Tower
+            <p id="Tower" className="flex-grow flex">
+              Tower - <img className="mx-4 h-6" src="tower.png"></img>
             </p>
-            <img className="mx-4" src="tower.png"></img>
+              321 <img src="eddie.png" className="h-5 mt-1"></img>
           </li>
           <li
             onClick={this.createThing}
             className="flex p-1 my-4 hover:bg-yellow-300"
           >
-            <p id="Soldier" className="flex-grow">
-              Soldier
+            <p id="Soldier" className="flex-grow flex">
+              Soldier - <img className="mx-4 h-6" src="soldier.png"></img>
             </p>
-            <img className="mx-4" src="soldier.png"></img>
+              20 <img src="eddie.png" className="h-5 mt-1"></img>
           </li>
           <li
             onClick={this.createThing}
             className="flex p-1 my-4 hover:bg-yellow-300"
           >
-            <p id="Champion" className="flex-grow">
-              Champion
+            <p id="Champion" className="flex-grow flex">
+              Champion - <img className="mx-4 h-6" src="champion.png"></img>
             </p>
-            <img className="mx-4" src="champion.png"></img>
+              814 <img src="eddie.png" className="h-5 mt-1"></img>
           </li>
         </ul>
       </div>

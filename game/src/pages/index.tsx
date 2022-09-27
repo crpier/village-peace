@@ -3,113 +3,11 @@ import type { NextPage } from "next";
 import Head from "next/head";
 import { Component, useState } from "react";
 import { env } from "../env/client.mjs";
-import { typeToProps } from "../types/domain";
-
-enum ClientEventType {
-  Connect = "Connect",
-  Create = "Create",
-  Delete = "Delete",
-  Request = "Request",
-}
-
-enum ServerEventType {
-  Update = "Update",
-}
-
-class WSClient {
-  private ws: WebSocket | undefined;
-
-  constructor() {
-    this.ws = undefined;
-  }
-
-  initialize(host: string) {
-    this.ws = new WebSocket(host);
-    this.ws.onopen = (_) => {
-      // is this a workaround or proper react etiquette?
-      setTimeout(() => {
-        this.send_connection_notification();
-        // TODO: try smaller values here
-      }, 100);
-    };
-  }
-
-  closeConnection() {
-    if (this.ws) {
-      this.ws.close(1000);
-    }
-  }
-
-  send_connection_notification() {
-    if (this.ws) {
-      this.ws.send(
-        JSON.stringify({
-          event_type: ClientEventType.Connect,
-          meta: {
-            top_left: { row: 0, col: 0 },
-            bottom_right: { row: 6, col: 8 },
-          },
-        })
-      );
-    } else {
-      console.log("Tried to use unitialized WebSocket!");
-    }
-  }
-
-  send_creation_event(target: { type: string; top: number; left: number }) {
-    if (this.ws) {
-      const notification = JSON.stringify({
-        event_type: "Create",
-        meta: {
-          top_left: { row: 0, col: 0 },
-          bottom_right: { row: 6, col: 8 },
-        },
-        data: {
-          type: target.type,
-          loc: { col: target.left, row: target.top },
-        },
-      });
-      this.ws.send(notification);
-    }
-  }
-
-  send_deletion_event(target: { type: string; top: number; left: number }) {
-    if (this.ws) {
-      const notification = JSON.stringify({
-        event_type: "Delete",
-        meta: {
-          top_left: { row: 0, col: 0 },
-          bottom_right: { row: 6, col: 8 },
-        },
-        data: {
-          type: target.type,
-          loc: { col: target.left, row: target.top },
-        },
-      });
-      this.ws.send(notification);
-    }
-  }
-  registerCallback(
-    serverEventType: ServerEventType,
-    callback: (message: MessageEvent<any>) => void
-  ) {
-    if (this.ws) {
-      // TODO: rather than use `addEventListener`, we should assign `.onmessage` and keep an internal list of callbacks
-      // this way, we avoid duplicates
-      this.ws.addEventListener("message", (message: MessageEvent<any>) => {
-        let messageObj = JSON.parse(message.data);
-        console.log(serverEventType);
-        console.log(message);
-        if (messageObj.event_type == serverEventType) {
-          callback(messageObj.data);
-        }
-      });
-    }
-  }
-}
+import { typeToProps, SmthType } from "../types/domain";
+import { WSClient, ServerEventType } from "../services/ws";
 
 // -----Components-----
-interface WorldProps { }
+interface WorldProps {}
 
 interface WorldState {
   items: Array<any>;
@@ -125,6 +23,10 @@ interface WorldState {
       left: number;
     };
   };
+  worldMeta: {
+    width: number;
+    height: number;
+  };
 }
 
 const wsClient = new WSClient();
@@ -138,15 +40,26 @@ class World extends Component<WorldProps, WorldState> {
         target: { type: "", top: 0, left: 0 },
         popup: { left: 0, top: 0 },
       },
+      worldMeta: {
+        width: 0,
+        height: 0,
+      },
     };
   }
 
   componentDidMount() {
-    wsClient.initialize(`${env.NEXT_PUBLIC_WS_HOST}`);
-
-    wsClient.registerCallback(ServerEventType.Update, (data: any) => {
-      // TODO: use types
-      this.setState({ items: data });
+    this.setState({
+      worldMeta: {
+        width: Math.floor((window.innerWidth-144) / 96),
+        height: Math.floor((window.innerHeight-144) / 96),
+      },
+    });
+    setTimeout(() => {
+      console.log(this.state.worldMeta.width)
+      wsClient.initialize(`${env.NEXT_PUBLIC_WS_HOST}`, this.state.worldMeta);
+      wsClient.registerCallback(ServerEventType.Update, (data: any) => {
+        this.setState({ items: data });
+      });
     });
   }
 
@@ -158,8 +71,8 @@ class World extends Component<WorldProps, WorldState> {
     return (
       <main className="container mx-auto flex flex-col items-center justify-center min-h-screen p-4">
         {this.state.items?.map((item: any) => (
-          <Thing
-            thingType={item.type}
+          <Smth
+            smthType={item.type}
             left={item.loc.col}
             top={item.loc.row}
             key={`${item.type}:${item.loc.row}-${item.loc.col}`}
@@ -170,12 +83,12 @@ class World extends Component<WorldProps, WorldState> {
   }
 }
 
-interface PopupState { }
+interface PopupState {}
 interface PopupProps {
   target: {
     top: number;
     left: number;
-    type: string;
+    type: SmthType;
   };
   popup: { left: number; top: number };
   closeHandler: () => void;
@@ -187,7 +100,7 @@ class EditPopup extends Component<PopupProps, PopupState> {
     this.state = {};
   }
 
-  deleteThing = (e: any) => {
+  deleteThing = (_: any) => {
     wsClient.send_deletion_event({ ...this.props.target });
     this.props.closeHandler();
   };
@@ -219,7 +132,7 @@ class CreatePopup extends Component<PopupProps, PopupState> {
     this.state = {};
   }
 
-  createThing = (e: any) => {
+  createSmth = (e: any) => {
     wsClient.send_creation_event({
       type: e.target.id,
       top: this.props.target.top,
@@ -234,11 +147,11 @@ class CreatePopup extends Component<PopupProps, PopupState> {
         style={{ position: "absolute", top: 96, left: 96, zIndex: 100 }}
         className="p-2 bg-yellow-500 w-60"
       >
-        <p>Create Thing</p>
+        <p>Create Smth</p>
         <div className="h-1 bg-orange-800"></div>
         <ul>
           <li
-            onClick={this.createThing}
+            onClick={this.createSmth}
             className="flex p-1 my-4 hover:bg-yellow-300"
           >
             <p id="House" className="flex-grow flex">
@@ -247,7 +160,7 @@ class CreatePopup extends Component<PopupProps, PopupState> {
             138 <img src="eddie.png" className="h-5 mt-1"></img>
           </li>
           <li
-            onClick={this.createThing}
+            onClick={this.createSmth}
             className="flex p-1 my-4 hover:bg-yellow-300"
           >
             <p id="Barrack" className="flex-grow flex">
@@ -256,7 +169,7 @@ class CreatePopup extends Component<PopupProps, PopupState> {
             489 <img src="eddie.png" className="h-5 mt-1"></img>
           </li>
           <li
-            onClick={this.createThing}
+            onClick={this.createSmth}
             className="flex p-1 my-4 hover:bg-yellow-300"
           >
             <p id="Tower" className="flex-grow flex">
@@ -265,7 +178,7 @@ class CreatePopup extends Component<PopupProps, PopupState> {
             321 <img src="eddie.png" className="h-5 mt-1"></img>
           </li>
           <li
-            onClick={this.createThing}
+            onClick={this.createSmth}
             className="flex p-1 my-4 hover:bg-yellow-300"
           >
             <p id="Soldier" className="flex-grow flex">
@@ -274,7 +187,7 @@ class CreatePopup extends Component<PopupProps, PopupState> {
             20 <img src="eddie.png" className="h-5 mt-1"></img>
           </li>
           <li
-            onClick={this.createThing}
+            onClick={this.createSmth}
             className="flex p-1 my-4 hover:bg-yellow-300"
           >
             <p id="Champion" className="flex-grow flex">
@@ -288,7 +201,7 @@ class CreatePopup extends Component<PopupProps, PopupState> {
   }
 }
 
-function Thing(props: { left: number; top: number; thingType: string }) {
+function Smth(props: { left: number; top: number; smthType: SmthType }) {
   let [showPopup, setShowPopup] = useState(false);
   function openPopup() {
     setShowPopup(true);
@@ -298,7 +211,7 @@ function Thing(props: { left: number; top: number; thingType: string }) {
     setShowPopup(false);
   }
 
-  let thingData = typeToProps.get(props.thingType);
+  let thingData = typeToProps.get(props.smthType);
   if (thingData) {
     let style = {
       ...thingData.style,
@@ -306,12 +219,12 @@ function Thing(props: { left: number; top: number; thingType: string }) {
       top: 48 + props.top * 96,
     };
     let popup =
-      props.thingType == "Grass" ? (
+      props.smthType == SmthType.Grass ? (
         <CreatePopup
           target={{
             left: props.left,
             top: props.top,
-            type: props.thingType,
+            type: props.smthType,
           }}
           popup={{ left: props.left, top: props.top }}
           closeHandler={closePopup}
@@ -321,7 +234,7 @@ function Thing(props: { left: number; top: number; thingType: string }) {
           target={{
             left: props.left,
             top: props.top,
-            type: props.thingType,
+            type: props.smthType,
           }}
           popup={{ left: props.left, top: props.top }}
           closeHandler={closePopup}

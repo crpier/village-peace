@@ -1,6 +1,20 @@
+export enum SmthType {
+  House = "House",
+  Grass = "Grass",
+  Champion = "Champion",
+  Barrack = "Barrack",
+  Tower = "Tower",
+  Soldier = "Soldier",
+}
+
 export type Loc = {
   row: number;
   col: number;
+};
+
+export type Smth = {
+  loc: Loc;
+  type: SmthType;
 };
 
 export type thingStyle = {
@@ -13,8 +27,8 @@ export type thingStyle = {
 };
 
 export type thingData = {
-    sprite: string;
-      style: thingStyle;
+  sprite: string;
+  style: thingStyle;
 };
 
 export const typeToProps = new Map<string, thingData>([

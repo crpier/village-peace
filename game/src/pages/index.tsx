@@ -9,7 +9,7 @@ enum ClientEventType {
   Connect = "Connect",
   Create = "Create",
   Delete = "Delete",
-  Request = "Request"
+  Request = "Request",
 }
 
 enum ServerEventType {
@@ -44,7 +44,11 @@ class WSClient {
     if (this.ws) {
       this.ws.send(
         JSON.stringify({
-          type: ClientEventType.Connect,
+          event_type: ClientEventType.Connect,
+          meta: {
+            top_left: { row: 0, col: 0 },
+            bottom_right: { row: 6, col: 8 },
+          },
         })
       );
     } else {
@@ -55,13 +59,15 @@ class WSClient {
   send_creation_event(target: { type: string; top: number; left: number }) {
     if (this.ws) {
       const notification = JSON.stringify({
-        type: "event",
-        event: "create",
-        data: JSON.stringify({
+        event_type: "Create",
+        meta: {
+          top_left: { row: 0, col: 0 },
+          bottom_right: { row: 6, col: 8 },
+        },
+        data: {
           type: target.type,
-          col: target.left,
-          row: target.top,
-        }),
+          loc: { col: target.left, row: target.top },
+        },
       });
       this.ws.send(notification);
     }
@@ -70,13 +76,15 @@ class WSClient {
   send_deletion_event(target: { type: string; top: number; left: number }) {
     if (this.ws) {
       const notification = JSON.stringify({
-        type: "event",
-        event: "delete",
-        data: JSON.stringify({
+        event_type: "Delete",
+        meta: {
+          top_left: { row: 0, col: 0 },
+          bottom_right: { row: 6, col: 8 },
+        },
+        data: {
           type: target.type,
-          col: target.left,
-          row: target.top,
-        }),
+          loc: { col: target.left, row: target.top },
+        },
       });
       this.ws.send(notification);
     }
@@ -90,7 +98,9 @@ class WSClient {
       // this way, we avoid duplicates
       this.ws.addEventListener("message", (message: MessageEvent<any>) => {
         let messageObj = JSON.parse(message.data);
-        if (messageObj.type == serverEventType) {
+        console.log(serverEventType);
+        console.log(message);
+        if (messageObj.event_type == serverEventType) {
           callback(messageObj.data);
         }
       });
@@ -196,6 +206,7 @@ class EditPopup extends Component<PopupProps, PopupState> {
             className="flex p-1 my-4 hover:bg-yellow-300"
           >
             <p className="flex-grow">Sell</p>
+            138 <img src="eddie.png" className="h-5 mt-1"></img>
           </li>
         </ul>
       </div>
@@ -251,7 +262,7 @@ class CreatePopup extends Component<PopupProps, PopupState> {
             <p id="Tower" className="flex-grow flex">
               Tower - <img className="mx-4 h-6" src="tower.png"></img>
             </p>
-              321 <img src="eddie.png" className="h-5 mt-1"></img>
+            321 <img src="eddie.png" className="h-5 mt-1"></img>
           </li>
           <li
             onClick={this.createThing}
@@ -260,7 +271,7 @@ class CreatePopup extends Component<PopupProps, PopupState> {
             <p id="Soldier" className="flex-grow flex">
               Soldier - <img className="mx-4 h-6" src="soldier.png"></img>
             </p>
-              20 <img src="eddie.png" className="h-5 mt-1"></img>
+            20 <img src="eddie.png" className="h-5 mt-1"></img>
           </li>
           <li
             onClick={this.createThing}
@@ -269,7 +280,7 @@ class CreatePopup extends Component<PopupProps, PopupState> {
             <p id="Champion" className="flex-grow flex">
               Champion - <img className="mx-4 h-6" src="champion.png"></img>
             </p>
-              814 <img src="eddie.png" className="h-5 mt-1"></img>
+            814 <img src="eddie.png" className="h-5 mt-1"></img>
           </li>
         </ul>
       </div>

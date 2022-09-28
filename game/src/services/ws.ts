@@ -1,4 +1,4 @@
-import { Smth, Meta, SmthType } from "../types/domain";
+import { Smth, SmthType } from "../types/domain";
 
 export enum ClientEventType {
   Connect = "Connect",
@@ -11,20 +11,8 @@ export enum ServerEventType {
   Update = "Update",
 }
 
-class ClientEvent {
-  event_type: ClientEventType;
-  data: Smth;
-  meta: Meta;
-  constructor(eventType: ClientEventType, data: Smth, meta: Meta) {
-    this.event_type = eventType;
-    this.meta = meta;
-    this.data = data;
-  }
-}
-
-export class WSClient {
-  private ws: WebSocket | undefined;
-  private meta: {
+type EventMeta = {
+  chunk: {
     top_left: {
       row: number;
       col: number;
@@ -34,32 +22,57 @@ export class WSClient {
       col: number;
     };
   };
+  username: string;
+};
+class ClientEvent {
+  event_type: ClientEventType;
+  data: Smth;
+  meta: EventMeta;
+  constructor(eventType: ClientEventType, data: Smth, meta: EventMeta) {
+    this.event_type = eventType;
+    this.meta = meta;
+    this.data = data;
+  }
+}
+
+export class WSClient {
+  private ws: WebSocket | undefined;
+  private meta: EventMeta;
 
   constructor() {
     this.ws = undefined;
     this.meta = {
-      top_left: {
-        row: 0,
-        col: 0,
+      chunk: {
+        top_left: {
+          row: 0,
+          col: 0,
+        },
+        bottom_right: {
+          row: 0,
+          col: 0,
+        },
       },
-      bottom_right: {
-        row: 0,
-        col: 0,
-      },
+      username: "",
     };
   }
 
-  initialize(host: string, worldMeta: { width: number; height: number }) {
+  initialize(
+    host: string,
+    worldMeta: { width: number; height: number; username: string }
+  ) {
     this.ws = new WebSocket(host);
     this.meta = {
-      top_left: {
-        row: 0,
-        col: 0,
+      chunk: {
+        top_left: {
+          row: 0,
+          col: 0,
+        },
+        bottom_right: {
+          row: worldMeta.height,
+          col: worldMeta.width,
+        },
       },
-      bottom_right: {
-        row: worldMeta.height,
-        col: worldMeta.width,
-      },
+      username: worldMeta.username,
     };
     this.ws.onopen = (_) => {
       // is this a workaround or proper react etiquette?
@@ -82,6 +95,10 @@ export class WSClient {
         JSON.stringify({
           event_type: ClientEventType.Connect,
           meta: this.meta,
+          data: {
+            username: "sentry",
+            password: "none",
+          },
         })
       );
     } else {
@@ -94,6 +111,7 @@ export class WSClient {
       let smth = {
         loc: { row: target.top, col: target.left },
         type: target.type,
+        user: "sentry",
       };
       let ev = new ClientEvent(ClientEventType.Create, smth, this.meta);
       const notification = JSON.stringify(ev);
@@ -106,12 +124,16 @@ export class WSClient {
       let smth = {
         loc: { row: target.top, col: target.left },
         type: target.type,
+        user: "sentry",
       };
       let ev = new ClientEvent(ClientEventType.Delete, smth, this.meta);
       const notification = JSON.stringify(ev);
       this.ws.send(notification);
     }
   }
+
+  send_data_request_event(target: { type: Smth }) {}
+
   registerCallback(
     serverEventType: ServerEventType,
     callback: (message: MessageEvent<any>) => void

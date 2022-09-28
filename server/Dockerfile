@@ -8,6 +8,7 @@ RUN poetry config virtualenvs.create false
 RUN poetry install --no-root --only main
 
 
-COPY app /app
-WORKDIR app
-CMD ["python", "main.py"]
+COPY . /src
+WORKDIR /src
+ENV PYTHONPATH /src
+CMD ["python", "app/main.py"]

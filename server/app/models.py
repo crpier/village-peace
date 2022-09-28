@@ -1,4 +1,5 @@
 import enum
+import typing
 import pydantic
 
 
@@ -9,6 +10,52 @@ class SmthType(str, enum.Enum):
     Barrack = "Barrack"
     Tower = "Tower"
     Soldier = "Soldier"
+
+
+def calculate_scale_penalty_on_creation(smthType: SmthType, old_penalty: float):
+    match smthType:
+        case SmthType.House:
+            new_penalty = old_penalty + 0.5
+        case SmthType.Grass:
+            new_penalty = old_penalty + 0.6
+        case SmthType.Champion:
+            new_penalty = old_penalty + 0.7
+        case SmthType.Barrack:
+            new_penalty = old_penalty + 0.8
+        case SmthType.Tower:
+            new_penalty = old_penalty + 0.9
+        case SmthType.Soldier:
+            new_penalty = old_penalty + 1
+    return new_penalty
+
+
+def calculate_scale_penalty_on_delete(smthType: SmthType, old_penalty: float):
+    match smthType:
+        case SmthType.House:
+            new_penalty = old_penalty - 0.5
+        case SmthType.Grass:
+            new_penalty = old_penalty - 0.6
+        case SmthType.Champion:
+            new_penalty = old_penalty - 0.7
+        case SmthType.Barrack:
+            new_penalty = old_penalty - 0.8
+        case SmthType.Tower:
+            new_penalty = old_penalty - 0.9
+        case SmthType.Soldier:
+            new_penalty = old_penalty - 1
+    return new_penalty
+
+
+username = typing.NewType("username", str)
+
+
+class User(pydantic.BaseModel):
+    username: username
+    password: str
+    scale_penalty: float = 1
+
+
+sentry_user = User(username=username("sentry"), password="none")
 
 
 class Loc(pydantic.BaseModel):
@@ -24,6 +71,7 @@ class WorldChunk(pydantic.BaseModel):
 class Smth(pydantic.BaseModel):
     loc: Loc
     type: SmthType
+    user: username
 
     def to_jsonable(self):
-        return {"loc": self.loc.__dict__, "type": self.type.value}
+        return {"loc": self.loc.__dict__, "type": self.type.value, "user": self.user}

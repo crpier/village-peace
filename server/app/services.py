@@ -9,14 +9,18 @@ import pydantic
 
 from app import models
 
+
 class StateService:
     def __init__(self) -> None:
         self._stuff: typing.List[models.Smth] = []
+        self._users: typing.Dict[models.username, models.User] = {}
         # Add grass all over the place
         for i in range(20):
             for j in range(20):
                 grass = models.Smth(
-                    loc=models.Loc(row=i, col=j), type=models.SmthType.Grass
+                    loc=models.Loc(row=i, col=j),
+                    type=models.SmthType.Grass,
+                    user=models.sentry_user.username,
                 )
                 self.add_smth(grass)
 
@@ -32,6 +36,26 @@ class StateService:
             )
         ]
 
+    def add_user(self, user: models.User):
+        if self._users.get(user.username, None):
+            raise ValueError(f"User with {user.username=} alread exists")
+        self._users[user.username] = user
+
+    def update_user(self, username: models.username, update: dict):
+        # TODO: remove this after implementing registration
+        self._users[username] = models.User(
+            **self._users.get(
+                username, models.User(username=username, password="None")
+            ).__dict__
+            | update
+        )
+
+    def get_user(self, username: models.username):
+        # TODO: remove this after implementing registration
+        return self._users.get(
+            username, models.User(username=username, password="None")
+        )
+
     def add_smth(self, smth: models.Smth):
         self._stuff.append(smth)
 
@@ -40,22 +64,22 @@ class StateService:
             if item.loc == smth.loc and item.type == smth.type:
                 self._stuff.remove(item)
 
-    def populate_world_for_development(self):
-        self.add_smth(
-            models.Smth(loc=models.Loc(row=0, col=0), type=models.SmthType.House)
-        )
-        self.add_smth(
-            models.Smth(loc=models.Loc(row=1, col=1), type=models.SmthType.Barrack)
-        )
-        self.add_smth(
-            models.Smth(loc=models.Loc(row=2, col=2), type=models.SmthType.Tower)
-        )
-        self.add_smth(
-            models.Smth(loc=models.Loc(row=3, col=3), type=models.SmthType.Soldier)
-        )
-        self.add_smth(
-            models.Smth(loc=models.Loc(row=4, col=4), type=models.SmthType.Champion)
-        )
+    # def populate_world_for_development(self):
+    #     self.add_smth(
+    #         models.Smth(loc=models.Loc(row=0, col=0), type=models.SmthType.House)
+    #     )
+    #     self.add_smth(
+    #         models.Smth(loc=models.Loc(row=1, col=1), type=models.SmthType.Barrack)
+    #     )
+    #     self.add_smth(
+    #         models.Smth(loc=models.Loc(row=2, col=2), type=models.SmthType.Tower)
+    #     )
+    #     self.add_smth(
+    #         models.Smth(loc=models.Loc(row=3, col=3), type=models.SmthType.Soldier)
+    #     )
+    #     self.add_smth(
+    #         models.Smth(loc=models.Loc(row=4, col=4), type=models.SmthType.Champion)
+    #     )
 
 
 class ClientEventType(str, enum.Enum):
@@ -69,10 +93,15 @@ class ServerEventType(str, enum.Enum):
     Update = "Update"
 
 
+class ClientEventMeta(pydantic.BaseModel):
+    chunk: models.WorldChunk
+    username: models.username
+
+
 class ClientEvent(pydantic.BaseModel):
     event_type: ClientEventType
     data: typing.Optional[models.Smth] = None
-    meta: typing.Optional[typing.Any] = None
+    meta: ClientEventMeta
 
     @abstractmethod
     async def handle(
@@ -87,7 +116,7 @@ class ClientEvent(pydantic.BaseModel):
 
 class ServerEvent(pydantic.BaseModel):
     event_type: ServerEventType
-    data: models.Smth | typing.List[models.Smth]
+    data: typing.List[models.Smth]
 
 
 class ConnectionService:
@@ -115,7 +144,7 @@ class ConnectionService:
             assert len(event_class) == 1
             try:
                 event = event_class[0](**message_dict)
-            except pydantic.error_wrappers.ValidationError as e:
+            except pydantic.error_wrappers.ValidationError:
                 print(f"Validation failed for {message_dict}")
                 message_dict["data"]["type"] = "Soldier"
                 event = event_class[0](**message_dict)
@@ -127,7 +156,8 @@ class ConnectionService:
 
 class ConnectEvent(ClientEvent):
     event_type = ClientEventType.Connect
-    meta: models.WorldChunk
+    meta: ClientEventMeta
+    data: models.User
 
     async def handle(
         self,
@@ -136,7 +166,7 @@ class ConnectEvent(ClientEvent):
         ],
         persistence_service: StateService,
     ):
-        world_to_send = persistence_service.get_world_chunk(self.meta)
+        world_to_send = persistence_service.get_world_chunk(self.meta.chunk)
         await ws_sender(
             # TODO: create proper event class
             ServerEvent(event_type=ServerEventType.Update, data=world_to_send)
@@ -146,7 +176,7 @@ class ConnectEvent(ClientEvent):
 class CreateEvent(ClientEvent):
     event_type = ClientEventType.Create
     data: models.Smth
-    meta: models.WorldChunk
+    meta: ClientEventMeta
 
     async def handle(
         self,
@@ -155,9 +185,16 @@ class CreateEvent(ClientEvent):
         ],
         persistence_service: StateService,
     ):
+        user = persistence_service.get_user(self.meta.username)
+        new_penalty = models.calculate_scale_penalty_on_creation(
+            smthType=self.data.type, old_penalty=user.scale_penalty
+        )
         persistence_service.add_smth(self.data)
+        persistence_service.update_user(
+            username=user.username, update={"scale_penalty": new_penalty}
+        )
 
-        world_to_send = persistence_service.get_world_chunk(self.meta)
+        world_to_send = persistence_service.get_world_chunk(self.meta.chunk)
         await ws_sender(
             ServerEvent(event_type=ServerEventType.Update, data=world_to_send)
         )
@@ -166,7 +203,7 @@ class CreateEvent(ClientEvent):
 class DeleteEvent(ClientEvent):
     event_type = ClientEventType.Delete
     data: models.Smth
-    meta: models.WorldChunk
+    meta: ClientEventMeta
 
     async def handle(
         self,
@@ -175,9 +212,16 @@ class DeleteEvent(ClientEvent):
         ],
         persistence_service: StateService,
     ):
+        user = persistence_service.get_user(self.meta.username)
+        new_penalty = models.calculate_scale_penalty_on_delete(
+            smthType=self.data.type, old_penalty=user.scale_penalty
+        )
         persistence_service.remove_smth(self.data)
+        persistence_service.update_user(
+            username=user.username, update={"scale_penalty": new_penalty}
+        )
 
-        world_to_send = persistence_service.get_world_chunk(self.meta)
+        world_to_send = persistence_service.get_world_chunk(self.meta.chunk)
         await ws_sender(
             ServerEvent(event_type=ServerEventType.Update, data=world_to_send)
         )

@@ -7,7 +7,7 @@ import { typeToProps, SmthType } from "../types/domain";
 import { WSClient, ServerEventType } from "../services/ws";
 
 // -----Components-----
-interface WorldProps {}
+interface WorldProps { }
 
 interface WorldState {
   items: Array<any>;
@@ -26,6 +26,7 @@ interface WorldState {
   worldMeta: {
     width: number;
     height: number;
+    username: string;
   };
 }
 
@@ -43,6 +44,7 @@ class World extends Component<WorldProps, WorldState> {
       worldMeta: {
         width: 0,
         height: 0,
+        username: "nelson",
       },
     };
   }
@@ -50,12 +52,12 @@ class World extends Component<WorldProps, WorldState> {
   componentDidMount() {
     this.setState({
       worldMeta: {
-        width: Math.floor((window.innerWidth-144) / 96),
-        height: Math.floor((window.innerHeight-144) / 96),
+        width: Math.floor((window.innerWidth - 144) / 96),
+        height: Math.floor((window.innerHeight - 144) / 96),
+        username: "nelson",
       },
     });
     setTimeout(() => {
-      console.log(this.state.worldMeta.width)
       wsClient.initialize(`${env.NEXT_PUBLIC_WS_HOST}`, this.state.worldMeta);
       wsClient.registerCallback(ServerEventType.Update, (data: any) => {
         this.setState({ items: data });
@@ -83,7 +85,7 @@ class World extends Component<WorldProps, WorldState> {
   }
 }
 
-interface PopupState {}
+interface PopupState { }
 interface PopupProps {
   target: {
     top: number;

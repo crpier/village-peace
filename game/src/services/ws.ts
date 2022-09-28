@@ -108,12 +108,12 @@ export class WSClient {
 
   send_creation_event(target: { type: SmthType; top: number; left: number }) {
     if (this.ws) {
-      let smth = {
+      const smth = {
         loc: { row: target.top, col: target.left },
         type: target.type,
         user: "sentry",
       };
-      let ev = new ClientEvent(ClientEventType.Create, smth, this.meta);
+      const ev = new ClientEvent(ClientEventType.Create, smth, this.meta);
       const notification = JSON.stringify(ev);
       this.ws.send(notification);
     }
@@ -121,18 +121,18 @@ export class WSClient {
 
   send_deletion_event(target: { type: SmthType; top: number; left: number }) {
     if (this.ws) {
-      let smth = {
+      const smth = {
         loc: { row: target.top, col: target.left },
         type: target.type,
         user: "sentry",
       };
-      let ev = new ClientEvent(ClientEventType.Delete, smth, this.meta);
+      const ev = new ClientEvent(ClientEventType.Delete, smth, this.meta);
       const notification = JSON.stringify(ev);
       this.ws.send(notification);
     }
   }
 
-  send_data_request_event(target: { type: Smth }) {}
+  // send_data_request_event(target: { type: Smth }) {}
 
   registerCallback(
     serverEventType: ServerEventType,
@@ -142,7 +142,7 @@ export class WSClient {
       // TODO: rather than use `addEventListener`, we should assign `.onmessage` and keep an internal list of callbacks
       // this way, we avoid duplicates
       this.ws.addEventListener("message", (message: MessageEvent<any>) => {
-        let messageObj = JSON.parse(message.data);
+        const messageObj = JSON.parse(message.data);
         if (messageObj.event_type == serverEventType) {
           callback(messageObj.data);
         }

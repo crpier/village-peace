@@ -56,10 +56,7 @@ export class WSClient {
     };
   }
 
-  initialize(
-    host: string,
-    worldMeta: { width: number; height: number; username: string }
-  ) {
+  initialize(host: string, worldMeta: { width: number; height: number }) {
     this.ws = new WebSocket(host);
     this.meta = {
       chunk: {
@@ -72,7 +69,7 @@ export class WSClient {
           col: worldMeta.width,
         },
       },
-      username: worldMeta.username,
+      username: "",
     };
     this.ws.onopen = (_) => {
       // is this a workaround or proper react etiquette?
@@ -81,6 +78,10 @@ export class WSClient {
         // TODO: try smaller values here
       }, 100);
     };
+  }
+
+  login(username: string) {
+    this.meta.username = username;
   }
 
   closeConnection() {
@@ -111,7 +112,7 @@ export class WSClient {
       const smth = {
         loc: { row: target.top, col: target.left },
         type: target.type,
-        user: "sentry",
+        user: this.meta.username,
       };
       const ev = new ClientEvent(ClientEventType.Create, smth, this.meta);
       const notification = JSON.stringify(ev);
@@ -124,7 +125,7 @@ export class WSClient {
       const smth = {
         loc: { row: target.top, col: target.left },
         type: target.type,
-        user: "sentry",
+        user: this.meta.username,
       };
       const ev = new ClientEvent(ClientEventType.Delete, smth, this.meta);
       const notification = JSON.stringify(ev);
@@ -144,6 +145,7 @@ export class WSClient {
       this.ws.addEventListener("message", (message: MessageEvent<any>) => {
         const messageObj = JSON.parse(message.data);
         if (messageObj.event_type == serverEventType) {
+          console.log(messageObj.data[0])
           callback(messageObj.data);
         }
       });

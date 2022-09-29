@@ -1,13 +1,13 @@
 /* eslint-disable */
 import type { NextPage } from "next";
 import Head from "next/head";
-import { Component, useState } from "react";
+import { Component, createRef, FormEvent, RefObject, useState } from "react";
 import { env } from "../env/client.mjs";
 import { typeToProps, SmthType } from "../types/domain";
 import { WSClient, ServerEventType } from "../services/ws";
 
 // -----Components-----
-interface WorldProps { }
+interface WorldProps {}
 
 interface WorldState {
   items: Array<any>;
@@ -26,8 +26,8 @@ interface WorldState {
   worldMeta: {
     width: number;
     height: number;
-    username: string;
   };
+  username: string;
 }
 
 const wsClient = new WSClient();
@@ -44,8 +44,8 @@ class World extends Component<WorldProps, WorldState> {
       worldMeta: {
         width: 0,
         height: 0,
-        username: "nelson",
       },
+      username: "",
     };
   }
 
@@ -54,7 +54,6 @@ class World extends Component<WorldProps, WorldState> {
       worldMeta: {
         width: Math.floor((window.innerWidth - 144) / 96),
         height: Math.floor((window.innerHeight - 144) / 96),
-        username: "nelson",
       },
     });
     setTimeout(() => {
@@ -69,28 +68,39 @@ class World extends Component<WorldProps, WorldState> {
     wsClient.closeConnection();
   }
 
+  authenticate = (username: string) => {
+    this.setState({ username: username });
+    wsClient.login(username);
+  };
+
   render() {
     return (
       <main className="container mx-auto flex flex-col items-center justify-center min-h-screen p-4">
+        TODO: have a type in models for this, maybe a validator too?
         {this.state.items?.map((item: any) => (
           <Smth
+            smthOwner={item.user}
             smthType={item.type}
             left={item.loc.col}
             top={item.loc.row}
             key={`${item.type}:${item.loc.row}-${item.loc.col}`}
           />
         ))}
+        {this.state.username === "" && (
+          <Login setUsername={this.authenticate}></Login>
+        )}
       </main>
     );
   }
 }
 
-interface PopupState { }
+interface PopupState {}
 interface PopupProps {
   target: {
     top: number;
     left: number;
     type: SmthType;
+    owner: string;
   };
   popup: { left: number; top: number };
   closeHandler: () => void;
@@ -113,7 +123,7 @@ class EditPopup extends Component<PopupProps, PopupState> {
         style={{ position: "absolute", top: 96, left: 96, zIndex: 100 }}
         className="p-2 bg-yellow-500 w-40"
       >
-        <p>{this.props.target.type}</p>
+        <p>{this.props.target.type} owned by {this.props.target.owner}</p>
         <div className="h-1 bg-orange-800"></div>
         <ul>
           <li
@@ -203,7 +213,12 @@ class CreatePopup extends Component<PopupProps, PopupState> {
   }
 }
 
-function Smth(props: { left: number; top: number; smthType: SmthType }) {
+function Smth(props: {
+  left: number;
+  top: number;
+  smthType: SmthType;
+  smthOwner: string;
+}) {
   let [showPopup, setShowPopup] = useState(false);
   function openPopup() {
     setShowPopup(true);
@@ -227,6 +242,7 @@ function Smth(props: { left: number; top: number; smthType: SmthType }) {
             left: props.left,
             top: props.top,
             type: props.smthType,
+            owner: props.smthOwner,
           }}
           popup={{ left: props.left, top: props.top }}
           closeHandler={closePopup}
@@ -237,6 +253,7 @@ function Smth(props: { left: number; top: number; smthType: SmthType }) {
             left: props.left,
             top: props.top,
             type: props.smthType,
+            owner: props.smthOwner,
           }}
           popup={{ left: props.left, top: props.top }}
           closeHandler={closePopup}
@@ -254,6 +271,36 @@ function Smth(props: { left: number; top: number; smthType: SmthType }) {
   }
 }
 
+function Login(props: { setUsername: (username: string) => void }) {
+  let input: RefObject<HTMLInputElement> = createRef();
+  function handleSubmit(ev: FormEvent) {
+    ev.preventDefault();
+    props.setUsername(input.current?.value || "");
+  }
+  return (
+    <div className="absolute bg-yellow-600 z-10 w-3/12 text-center">
+      <form
+        className="flex flex-col m-4 bg-yellow-500 items-center"
+        onSubmit={handleSubmit}
+      >
+        <label className="m-5 font-bold">
+          Username
+          <input
+            className="mx-4 bg-yellow-300"
+            name="username"
+            ref={input}
+          ></input>
+        </label>
+        <button
+          type="submit"
+          className="font-bold my-5 px-10 py-2 bg-yellow-600 w-max"
+        >
+          Login
+        </button>
+      </form>
+    </div>
+  );
+}
 const Home: NextPage = (_) => {
   return (
     <>

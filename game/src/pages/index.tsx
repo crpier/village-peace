@@ -1,7 +1,7 @@
 /* eslint-disable */
 import type { NextPage } from "next";
 import Head from "next/head";
-import { Component, createRef, FormEvent, RefObject, useState } from "react";
+import { Component, createRef, FormEvent, MouseEvent, RefObject, useState } from "react";
 import { env } from "../env/client.mjs";
 import { typeToProps, SmthType } from "../types/domain";
 import { WSClient, ServerEventType } from "../services/ws";
@@ -160,7 +160,7 @@ class CreatePopup extends Component<PopupProps, PopupState> {
 
   createSmth = (e: any) => {
     wsClient.send_creation_event({
-      type: e.target.id,
+      type: e.target.closest('li[id]').id,
       top: this.props.target.top,
       left: this.props.target.left,
     });
@@ -201,8 +201,9 @@ class CreatePopup extends Component<PopupProps, PopupState> {
               onClick={this.createSmth}
               className="flex p-1 my-4 hover:bg-yellow-300"
               key={item.type}
+              id={item.type}
             >
-              <p id={item.type} className="flex-grow flex">
+              <p className="flex-grow flex">
                 {item.type}{" "}
                 <img
                   className="mx-4 h-6"

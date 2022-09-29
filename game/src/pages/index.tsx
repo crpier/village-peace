@@ -1,13 +1,20 @@
 /* eslint-disable */
 import type { NextPage } from "next";
 import Head from "next/head";
-import { Component, createRef, FormEvent, MouseEvent, RefObject, useState } from "react";
+import {
+  Component,
+  createRef,
+  FormEvent,
+  MouseEvent,
+  RefObject,
+  useState,
+} from "react";
 import { env } from "../env/client.mjs";
 import { typeToProps, SmthType } from "../types/domain";
 import { WSClient, ServerEventType } from "../services/ws";
 
 // -----Components-----
-interface WorldProps { }
+interface WorldProps {}
 
 interface WorldState {
   items: Array<any>;
@@ -131,7 +138,12 @@ class EditPopup extends Component<PopupProps, PopupState> {
       >
         <div className="flex mb-3">
           <div className="w-full"></div>
-          <button className="w-max hover: bg-yellow-300 hover:bg-yellow-200 px-3 rounded-md" onClick={this.props.closeHandler}>X</button>
+          <button
+            className="w-max hover: bg-yellow-300 hover:bg-yellow-200 px-3 rounded-md"
+            onClick={this.props.closeHandler}
+          >
+            X
+          </button>
         </div>
         <p>
           {this.props.target.type} owned by {this.props.target.owner}
@@ -160,7 +172,7 @@ class CreatePopup extends Component<PopupProps, PopupState> {
 
   createSmth = (e: any) => {
     wsClient.send_creation_event({
-      type: e.target.closest('li[id]').id,
+      type: e.target.closest("li[id]").id,
       top: this.props.target.top,
       left: this.props.target.left,
     });
@@ -185,35 +197,44 @@ class CreatePopup extends Component<PopupProps, PopupState> {
 
   render() {
     return (
-      <div
-        style={{ position: "absolute", top: 96, left: 96, zIndex: 100 }}
-        className="p-2 bg-yellow-500 w-60"
-      >
-        <div className="flex mb-3">
-          <div className="w-full"></div>
-          <button className="w-max hover: bg-yellow-300 hover:bg-yellow-200 px-3 rounded-md" onClick={this.props.closeHandler}>X</button>
-        </div>
-        <p>Create Smth</p>
-        <div className="h-1 bg-orange-800"></div>
-        <ul>
-          {this.state.items.map((item) => (
-            <li
-              onClick={this.createSmth}
-              className="flex p-1 my-4 hover:bg-yellow-300"
-              key={item.type}
-              id={item.type}
-            >
-              <p className="flex-grow flex">
-                {item.type}{" "}
-                <img
-                  className="mx-4 h-6"
-                  src={item.type.toLowerCase() + ".png"}
-                ></img>
-              </p>
-              {item.price} <img src="eddie.png" className="h-5 mt-1"></img>
-            </li>
-          ))}
-        </ul>
+      <div>
+        {this.state.items.length > 0 && (
+          <div
+            style={{ position: "absolute", top: 96, left: 96, zIndex: 100 }}
+            className="p-2 bg-yellow-500 w-60"
+          >
+            <div className="flex mb-3">
+              <div className="w-full"></div>
+              <button
+                className="w-max hover: bg-yellow-300 hover:bg-yellow-200 px-3 rounded-md"
+                onClick={this.props.closeHandler}
+              >
+                X
+              </button>
+            </div>
+            <p>Create Smth</p>
+            <div className="h-1 bg-orange-800"></div>
+            <ul>
+              {this.state.items.map((item) => (
+                <li
+                  onClick={this.createSmth}
+                  className="flex p-1 my-4 hover:bg-yellow-300"
+                  key={item.type}
+                  id={item.type}
+                >
+                  <p className="flex-grow flex">
+                    {item.type}{" "}
+                    <img
+                      className="mx-4 h-6"
+                      src={item.type.toLowerCase() + ".png"}
+                    ></img>
+                  </p>
+                  {item.price} <img src="eddie.png" className="h-5 mt-1"></img>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     );
   }

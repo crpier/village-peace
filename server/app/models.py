@@ -1,6 +1,7 @@
 import enum
 import typing
 import pydantic
+import math
 
 
 class SmthType(str, enum.Enum):
@@ -75,3 +76,20 @@ class Smth(pydantic.BaseModel):
 
     def to_jsonable(self):
         return {"loc": self.loc.__dict__, "type": self.type.value, "user": self.user}
+
+
+class CreationData(pydantic.BaseModel):
+    type: SmthType
+    price: int
+
+
+def calculate_available_smthgs(
+    loc: Loc, user_penalty: float
+) -> typing.List[CreationData]:
+    return [
+        CreationData(type=SmthType.House, price=math.ceil(20*user_penalty)),
+        CreationData(type=SmthType.Champion, price=math.ceil(50*user_penalty)),
+        CreationData(type=SmthType.Barrack, price=math.ceil(80*user_penalty)),
+        CreationData(type=SmthType.Tower, price=math.ceil(120*user_penalty)),
+        CreationData(type=SmthType.Soldier, price=math.ceil(5*user_penalty)),
+    ]

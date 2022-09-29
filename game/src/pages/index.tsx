@@ -7,7 +7,7 @@ import { typeToProps, SmthType } from "../types/domain";
 import { WSClient, ServerEventType } from "../services/ws";
 
 // -----Components-----
-interface WorldProps {}
+interface WorldProps { }
 
 interface WorldState {
   items: Array<any>;
@@ -29,6 +29,9 @@ interface WorldState {
   };
   username: string;
 }
+
+// TODO: move this data into a service maybe?
+let loggedUser = "";
 
 const wsClient = new WSClient();
 class World extends Component<WorldProps, WorldState> {
@@ -71,12 +74,13 @@ class World extends Component<WorldProps, WorldState> {
   authenticate = (username: string) => {
     this.setState({ username: username });
     wsClient.login(username);
+    loggedUser = username;
   };
 
   render() {
     return (
       <main className="container mx-auto flex flex-col items-center justify-center min-h-screen p-4">
-        TODO: have a type in models for this, maybe a validator too?
+        {/* TODO: have a type in models for this, maybe a validator too? */}
         {this.state.items?.map((item: any) => (
           <Smth
             smthOwner={item.user}
@@ -94,7 +98,9 @@ class World extends Component<WorldProps, WorldState> {
   }
 }
 
-interface PopupState {}
+interface PopupState {
+  items: Array<{ type: string; price: number }>;
+}
 interface PopupProps {
   target: {
     top: number;
@@ -109,7 +115,7 @@ interface PopupProps {
 class EditPopup extends Component<PopupProps, PopupState> {
   constructor(props: PopupProps) {
     super(props);
-    this.state = {};
+    this.state = { items: [] };
   }
 
   deleteThing = (_: any) => {
@@ -123,16 +129,24 @@ class EditPopup extends Component<PopupProps, PopupState> {
         style={{ position: "absolute", top: 96, left: 96, zIndex: 100 }}
         className="p-2 bg-yellow-500 w-40"
       >
-        <p>{this.props.target.type} owned by {this.props.target.owner}</p>
+        <div className="flex mb-3">
+          <div className="w-full"></div>
+          <button className="w-max hover: bg-yellow-300 hover:bg-yellow-200 px-3 rounded-md" onClick={this.props.closeHandler}>X</button>
+        </div>
+        <p>
+          {this.props.target.type} owned by {this.props.target.owner}
+        </p>
         <div className="h-1 bg-orange-800"></div>
         <ul>
-          <li
-            onClick={this.deleteThing}
-            className="flex p-1 my-4 hover:bg-yellow-300"
-          >
-            <p className="flex-grow">Sell</p>
-            138 <img src="eddie.png" className="h-5 mt-1"></img>
-          </li>
+          {loggedUser == this.props.target.owner && (
+            <li
+              onClick={this.deleteThing}
+              className="flex p-1 my-4 hover:bg-yellow-300"
+            >
+              <p className="flex-grow">Sell</p>
+              138 <img src="eddie.png" className="h-5 mt-1"></img>
+            </li>
+          )}
         </ul>
       </div>
     );
@@ -141,7 +155,7 @@ class EditPopup extends Component<PopupProps, PopupState> {
 class CreatePopup extends Component<PopupProps, PopupState> {
   constructor(props: PopupProps) {
     super(props);
-    this.state = {};
+    this.state = { items: [] };
   }
 
   createSmth = (e: any) => {
@@ -153,60 +167,51 @@ class CreatePopup extends Component<PopupProps, PopupState> {
     this.props.closeHandler();
   };
 
+  requestCreationData = () => {
+    const requestId = wsClient.send_data_request_event({
+      top: this.props.target.top,
+      left: this.props.target.left,
+    });
+    wsClient.registerCallback(ServerEventType.Response, (message: any) => {
+      if (message.request_id === requestId) {
+        this.setState({ items: message.data });
+      }
+    });
+  };
+
+  componentDidMount() {
+    this.requestCreationData();
+  }
+
   render() {
     return (
       <div
         style={{ position: "absolute", top: 96, left: 96, zIndex: 100 }}
         className="p-2 bg-yellow-500 w-60"
       >
+        <div className="flex mb-3">
+          <div className="w-full"></div>
+          <button className="w-max hover: bg-yellow-300 hover:bg-yellow-200 px-3 rounded-md" onClick={this.props.closeHandler}>X</button>
+        </div>
         <p>Create Smth</p>
         <div className="h-1 bg-orange-800"></div>
         <ul>
-          <li
-            onClick={this.createSmth}
-            className="flex p-1 my-4 hover:bg-yellow-300"
-          >
-            <p id="House" className="flex-grow flex">
-              House <img className="mx-4 h-6" src="house.png"></img>
-            </p>
-            138 <img src="eddie.png" className="h-5 mt-1"></img>
-          </li>
-          <li
-            onClick={this.createSmth}
-            className="flex p-1 my-4 hover:bg-yellow-300"
-          >
-            <p id="Barrack" className="flex-grow flex">
-              Barrack - <img className="mx-4 h-6" src="barrack.png"></img>
-            </p>
-            489 <img src="eddie.png" className="h-5 mt-1"></img>
-          </li>
-          <li
-            onClick={this.createSmth}
-            className="flex p-1 my-4 hover:bg-yellow-300"
-          >
-            <p id="Tower" className="flex-grow flex">
-              Tower - <img className="mx-4 h-6" src="tower.png"></img>
-            </p>
-            321 <img src="eddie.png" className="h-5 mt-1"></img>
-          </li>
-          <li
-            onClick={this.createSmth}
-            className="flex p-1 my-4 hover:bg-yellow-300"
-          >
-            <p id="Soldier" className="flex-grow flex">
-              Soldier - <img className="mx-4 h-6" src="soldier.png"></img>
-            </p>
-            20 <img src="eddie.png" className="h-5 mt-1"></img>
-          </li>
-          <li
-            onClick={this.createSmth}
-            className="flex p-1 my-4 hover:bg-yellow-300"
-          >
-            <p id="Champion" className="flex-grow flex">
-              Champion - <img className="mx-4 h-6" src="champion.png"></img>
-            </p>
-            814 <img src="eddie.png" className="h-5 mt-1"></img>
-          </li>
+          {this.state.items.map((item) => (
+            <li
+              onClick={this.createSmth}
+              className="flex p-1 my-4 hover:bg-yellow-300"
+              key={item.type}
+            >
+              <p id={item.type} className="flex-grow flex">
+                {item.type}{" "}
+                <img
+                  className="mx-4 h-6"
+                  src={item.type.toLowerCase() + ".png"}
+                ></img>
+              </p>
+              {item.price} <img src="eddie.png" className="h-5 mt-1"></img>
+            </li>
+          ))}
         </ul>
       </div>
     );

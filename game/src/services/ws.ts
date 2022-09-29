@@ -1,4 +1,4 @@
-import { Smth, SmthType } from "../types/domain";
+import { SmthType } from "../types/domain";
 
 export enum ClientEventType {
   Connect = "Connect",
@@ -9,6 +9,7 @@ export enum ClientEventType {
 
 export enum ServerEventType {
   Update = "Update",
+  Response = "Response",
 }
 
 type EventMeta = {
@@ -26,9 +27,9 @@ type EventMeta = {
 };
 class ClientEvent {
   event_type: ClientEventType;
-  data: Smth;
+  data: any;
   meta: EventMeta;
-  constructor(eventType: ClientEventType, data: Smth, meta: EventMeta) {
+  constructor(eventType: ClientEventType, data: any, meta: EventMeta) {
     this.event_type = eventType;
     this.meta = meta;
     this.data = data;
@@ -120,6 +121,23 @@ export class WSClient {
     }
   }
 
+  send_data_request_event(target: { top: number; left: number }) {
+    if (this.ws) {
+      const requestId = Math.floor(Math.random() * 10000);
+      const data = {
+        loc: {
+          row: target.top,
+          col: target.left,
+        },
+        request_id: requestId,
+      };
+      const ev = new ClientEvent(ClientEventType.Request, data, this.meta);
+      const notification = JSON.stringify(ev);
+      this.ws.send(notification);
+      return requestId;
+    }
+  }
+
   send_deletion_event(target: { type: SmthType; top: number; left: number }) {
     if (this.ws) {
       const smth = {
@@ -145,7 +163,6 @@ export class WSClient {
       this.ws.addEventListener("message", (message: MessageEvent<any>) => {
         const messageObj = JSON.parse(message.data);
         if (messageObj.event_type == serverEventType) {
-          console.log(messageObj.data[0])
           callback(messageObj.data);
         }
       });

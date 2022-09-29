@@ -56,6 +56,9 @@ class StateService:
             username, models.User(username=username, password="None")
         )
 
+    def get_smth_for_user(self, username: models.username):
+        return [smth for smth in self._stuff if smth.user == username]
+
     def add_smth(self, smth: models.Smth):
         self._stuff.append(smth)
 
@@ -91,6 +94,7 @@ class ClientEventType(str, enum.Enum):
 
 class ServerEventType(str, enum.Enum):
     Update = "Update"
+    Response = "Response"
 
 
 class ClientEventMeta(pydantic.BaseModel):
@@ -116,7 +120,7 @@ class ClientEvent(pydantic.BaseModel):
 
 class ServerEvent(pydantic.BaseModel):
     event_type: ServerEventType
-    data: typing.List[models.Smth]
+    data: typing.List[models.Smth] | pydantic.BaseModel
 
 
 class ConnectionService:
@@ -124,7 +128,20 @@ class ConnectionService:
         self._persistence_service = persistence_service
 
     async def send_server_event(self, event: ServerEvent):
-        serialized_map = {"data": [smth.to_jsonable() for smth in event.data]}
+        # TODO: there must be a nicer way to do this
+        match event.event_type:
+            case ServerEventType.Update:
+                serialized_map = {"data": [smth.to_jsonable() for smth in event.data]}
+            case ServerEventType.Response:
+                serialized_map = {
+                    "data": {
+                        "request_id": event.data.request_id,
+                        "data": [
+                            {"type": item.type.value, "price": item.price}
+                            for item in event.data.data
+                        ],
+                    }
+                }
         data = json.dumps(event.__dict__ | serialized_map)
         await self.ws.send(data)
 
@@ -156,7 +173,6 @@ class ConnectionService:
 
 class ConnectEvent(ClientEvent):
     event_type = ClientEventType.Connect
-    meta: ClientEventMeta
     data: models.User
 
     async def handle(
@@ -176,7 +192,6 @@ class ConnectEvent(ClientEvent):
 class CreateEvent(ClientEvent):
     event_type = ClientEventType.Create
     data: models.Smth
-    meta: ClientEventMeta
 
     async def handle(
         self,
@@ -203,7 +218,6 @@ class CreateEvent(ClientEvent):
 class DeleteEvent(ClientEvent):
     event_type = ClientEventType.Delete
     data: models.Smth
-    meta: ClientEventMeta
 
     async def handle(
         self,
@@ -224,4 +238,40 @@ class DeleteEvent(ClientEvent):
         world_to_send = persistence_service.get_world_chunk(self.meta.chunk)
         await ws_sender(
             ServerEvent(event_type=ServerEventType.Update, data=world_to_send)
+        )
+
+
+class RequestData(pydantic.BaseModel):
+    loc: models.Loc
+    request_id: int
+
+
+class ResponseData(pydantic.BaseModel):
+    data: typing.List[models.CreationData]
+    request_id: int
+
+
+class RequestEvent(ClientEvent):
+    event_type = ClientEventType.Request
+    data: RequestData
+
+    async def handle(
+        self,
+        ws_sender: typing.Callable[
+            ["ServerEvent"], typing.Coroutine[typing.Any, typing.Any, None]
+        ],
+        persistence_service: StateService,
+    ):
+        user = persistence_service.get_user(self.meta.username)
+        available_things = models.calculate_available_smthgs(
+            loc=self.data.loc,
+            user_penalty=user.scale_penalty
+        )
+        await ws_sender(
+            ServerEvent(
+                event_type=ServerEventType.Response,
+                data=ResponseData(
+                    request_id=self.data.request_id, data=available_things
+                ),
+            )
         )

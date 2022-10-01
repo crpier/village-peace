@@ -1,4 +1,4 @@
-from abc import abstractmethod
+import abc
 import json
 import typing
 import websockets.server
@@ -24,17 +24,19 @@ class StateService:
                 )
                 self.add_smth(grass)
 
-    def get_world_chunk(self, chunk: models.WorldChunk) -> typing.List[models.Smth]:
-        return [
-            item
-            for item in self._stuff
-            if (
-                item.loc.row >= chunk.top_left.row
-                and item.loc.row <= chunk.bottom_right.row
-                and item.loc.col >= chunk.top_left.col
-                and item.loc.col <= chunk.bottom_right.col
-            )
-        ]
+    def get_world_chunk(self, chunk: models.WorldChunk) -> models.WorldItems:
+        return models.WorldItems(
+            items=[
+                item
+                for item in self._stuff
+                if (
+                    item.loc.row >= chunk.top_left.row
+                    and item.loc.row <= chunk.bottom_right.row
+                    and item.loc.col >= chunk.top_left.col
+                    and item.loc.col <= chunk.bottom_right.col
+                )
+            ]
+        )
 
     def add_user(self, user: models.User):
         if self._users.get(user.username, None):
@@ -107,7 +109,7 @@ class ClientEvent(pydantic.BaseModel):
     data: typing.Optional[models.Smth] = None
     meta: ClientEventMeta
 
-    @abstractmethod
+    @abc.abstractmethod
     async def handle(
         self,
         ws_sender: typing.Callable[
@@ -120,7 +122,7 @@ class ClientEvent(pydantic.BaseModel):
 
 class ServerEvent(pydantic.BaseModel):
     event_type: ServerEventType
-    data: typing.List[models.Smth] | pydantic.BaseModel
+    data: models.Jsonable
 
 
 class ConnectionService:
@@ -128,21 +130,9 @@ class ConnectionService:
         self._persistence_service = persistence_service
 
     async def send_server_event(self, event: ServerEvent):
-        # TODO: there must be a nicer way to do this
-        match event.event_type:
-            case ServerEventType.Update:
-                serialized_map = {"data": [smth.to_jsonable() for smth in event.data]}
-            case ServerEventType.Response:
-                serialized_map = {
-                    "data": {
-                        "request_id": event.data.request_id,
-                        "data": [
-                            {"type": item.type.value, "price": item.price}
-                            for item in event.data.data
-                        ],
-                    }
-                }
-        data = json.dumps(event.__dict__ | serialized_map)
+        data = json.dumps(
+            {"event_type": event.event_type.value, "data": event.data.to_jsonable()}
+        )
         await self.ws.send(data)
 
     async def __call__(self, websocket: websockets.server.WebSocketServerProtocol):
@@ -246,9 +236,18 @@ class RequestData(pydantic.BaseModel):
     request_id: int
 
 
-class ResponseData(pydantic.BaseModel):
-    data: typing.List[models.CreationData]
+class ResponseData(models.Jsonable):
+    data: models.AvailableThings
     request_id: int
+
+    def to_jsonable(self):
+        return {
+            "request_id": self.request_id,
+            "data": [
+                {"type": item.type.value, "price": item.price}
+                for item in self.data.things
+            ],
+        }
 
 
 class RequestEvent(ClientEvent):
@@ -264,8 +263,7 @@ class RequestEvent(ClientEvent):
     ):
         user = persistence_service.get_user(self.meta.username)
         available_things = models.calculate_available_smthgs(
-            loc=self.data.loc,
-            user_penalty=user.scale_penalty
+            loc=self.data.loc, user_penalty=user.scale_penalty
         )
         await ws_sender(
             ServerEvent(

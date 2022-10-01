@@ -3,6 +3,14 @@ import typing
 import pydantic
 import math
 
+import abc
+
+
+class Jsonable(pydantic.BaseModel, abc.ABC):
+    @abc.abstractmethod
+    def to_jsonable(self) -> dict:
+        pass
+
 
 class SmthType(str, enum.Enum):
     House = "House"
@@ -69,7 +77,7 @@ class WorldChunk(pydantic.BaseModel):
     bottom_right: Loc
 
 
-class Smth(pydantic.BaseModel):
+class Smth(Jsonable):
     loc: Loc
     type: SmthType
     user: username
@@ -78,18 +86,36 @@ class Smth(pydantic.BaseModel):
         return {"loc": self.loc.__dict__, "type": self.type.value, "user": self.user}
 
 
+class WorldItems(Jsonable):
+    items: typing.List[Smth]
+
+    def to_jsonable(self) -> dict | list:
+        return [smth.to_jsonable() for smth in self.items]
+
+
 class CreationData(pydantic.BaseModel):
     type: SmthType
     price: int
 
 
-def calculate_available_smthgs(
-    loc: Loc, user_penalty: float
-) -> typing.List[CreationData]:
-    return [
-        CreationData(type=SmthType.House, price=math.ceil(20*user_penalty)),
-        CreationData(type=SmthType.Champion, price=math.ceil(50*user_penalty)),
-        CreationData(type=SmthType.Barrack, price=math.ceil(80*user_penalty)),
-        CreationData(type=SmthType.Tower, price=math.ceil(120*user_penalty)),
-        CreationData(type=SmthType.Soldier, price=math.ceil(5*user_penalty)),
-    ]
+class AvailableThings(Jsonable):
+    things: typing.List[CreationData]
+
+    def to_jsonable(self) -> dict:
+        return {
+            "data": [
+                {"type": data.type.value, "price": data.price} for data in self.things
+            ]
+        }
+
+
+def calculate_available_smthgs(loc: Loc, user_penalty: float) -> AvailableThings:
+    return AvailableThings(
+        things=[
+            CreationData(type=SmthType.House, price=math.ceil(20 * user_penalty)),
+            CreationData(type=SmthType.Champion, price=math.ceil(50 * user_penalty)),
+            CreationData(type=SmthType.Barrack, price=math.ceil(80 * user_penalty)),
+            CreationData(type=SmthType.Tower, price=math.ceil(120 * user_penalty)),
+            CreationData(type=SmthType.Soldier, price=math.ceil(5 * user_penalty)),
+        ]
+    )

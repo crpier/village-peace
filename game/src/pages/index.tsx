@@ -1,20 +1,13 @@
 /* eslint-disable */
 import type { NextPage } from "next";
 import Head from "next/head";
-import {
-  Component,
-  createRef,
-  FormEvent,
-  MouseEvent,
-  RefObject,
-  useState,
-} from "react";
+import { Component, createRef, FormEvent, RefObject, useState } from "react";
 import { env } from "../env/client.mjs";
 import { typeToProps, SmthType } from "../types/domain";
-import { WSClient, ServerEventType } from "../services/ws";
+import { WSClient, ServerEventType, WorldMeta } from "../services/ws";
 
 // -----Components-----
-interface WorldProps {}
+interface WorldProps { }
 
 interface WorldState {
   items: Array<any>;
@@ -30,15 +23,22 @@ interface WorldState {
       left: number;
     };
   };
-  worldMeta: {
-    width: number;
-    height: number;
-  };
+  worldMeta: WorldMeta;
   username: string;
+  mapHeight: number;
+  mapWidth: number;
+}
+
+enum Direction {
+  Up = "Up",
+  Down = "Down",
+  Left = "Left",
+  Right = "Right",
 }
 
 // TODO: move this data into a service maybe?
 let loggedUser = "";
+let worldMeta: WorldMeta;
 
 const wsClient = new WSClient();
 class World extends Component<WorldProps, WorldState> {
@@ -52,19 +52,47 @@ class World extends Component<WorldProps, WorldState> {
         popup: { left: 0, top: 0 },
       },
       worldMeta: {
-        width: 0,
-        height: 0,
+        top_left: {
+          row: 0,
+          col: 0,
+        },
+        bottom_right: {
+          row: 0,
+          col: 0,
+        },
       },
       username: "",
+      mapHeight: 0,
+      mapWidth: 0,
     };
   }
 
   componentDidMount() {
+    const width = Math.floor(window.innerWidth / 96) - 2;
+    const height = Math.floor(window.innerHeight / 96) - 2;
+    worldMeta = {
+      top_left: {
+        row: 0,
+        col: 0,
+      },
+      bottom_right: {
+        row: height,
+        col: width,
+      },
+    };
     this.setState({
       worldMeta: {
-        width: Math.floor((window.innerWidth - 144) / 96),
-        height: Math.floor((window.innerHeight - 144) / 96),
+        top_left: {
+          row: 0,
+          col: 0,
+        },
+        bottom_right: {
+          row: height,
+          col: width,
+        },
       },
+      mapWidth: width,
+      mapHeight: height,
     });
     setTimeout(() => {
       wsClient.initialize(`${env.NEXT_PUBLIC_WS_HOST}`, this.state.worldMeta);
@@ -84,9 +112,36 @@ class World extends Component<WorldProps, WorldState> {
     loggedUser = username;
   };
 
+  scroll(direction: Direction) {
+    let newMeta: WorldMeta = this.state.worldMeta;
+    switch (direction) {
+      case Direction.Up:
+        newMeta.top_left.row--;
+        newMeta.bottom_right.row--;
+        break;
+      case Direction.Down:
+        newMeta.top_left.row++;
+        newMeta.bottom_right.row++;
+        break;
+      case Direction.Left:
+        newMeta.top_left.col--;
+        newMeta.bottom_right.col--;
+        break;
+      case Direction.Right:
+        newMeta.top_left.col++;
+        newMeta.bottom_right.col++;
+        break;
+    }
+    this.setState({
+      worldMeta: newMeta,
+    });
+    wsClient.updateWorldMeta(newMeta);
+    worldMeta = newMeta;
+  }
+
   render() {
     return (
-      <main className="container mx-auto flex flex-col items-center justify-center min-h-screen p-4">
+      <main className="flex flex-row items-center justify-center text-center min-h-screen p-4 w-screen">
         {/* TODO: have a type in models for this, maybe a validator too? */}
         {this.state.items?.map((item: any) => (
           <Smth
@@ -98,8 +153,32 @@ class World extends Component<WorldProps, WorldState> {
           />
         ))}
         {this.state.username === "" && (
-          <Login setUsername={this.authenticate}></Login>
+          <LoginPopup setUsername={this.authenticate}></LoginPopup>
         )}
+        <ScrollArrow
+          direction={Direction.Up}
+          scrollCallback={() => this.scroll(Direction.Up)}
+          mapWidth={this.state.mapWidth}
+          mapHeight={this.state.mapHeight}
+        ></ScrollArrow>
+        <ScrollArrow
+          direction={Direction.Down}
+          scrollCallback={() => this.scroll(Direction.Down)}
+          mapWidth={this.state.mapWidth}
+          mapHeight={this.state.mapHeight}
+        ></ScrollArrow>
+        <ScrollArrow
+          direction={Direction.Left}
+          scrollCallback={() => this.scroll(Direction.Left)}
+          mapWidth={this.state.mapWidth}
+          mapHeight={this.state.mapHeight}
+        ></ScrollArrow>
+        <ScrollArrow
+          direction={Direction.Right}
+          scrollCallback={() => this.scroll(Direction.Right)}
+          mapWidth={this.state.mapWidth}
+          mapHeight={this.state.mapHeight}
+        ></ScrollArrow>
       </main>
     );
   }
@@ -139,7 +218,7 @@ class EditPopup extends Component<PopupProps, PopupState> {
         <div className="flex mb-3">
           <div className="w-full"></div>
           <button
-            className="w-max hover: bg-yellow-300 hover:bg-yellow-200 px-3 rounded-md"
+            className="w-max hover:bg-yellow-200 px-3 rounded-md"
             onClick={this.props.closeHandler}
           >
             X
@@ -259,8 +338,8 @@ function Smth(props: {
   if (thingData) {
     let style = {
       ...thingData.style,
-      left: 48 + props.left * 96,
-      top: 48 + props.top * 96,
+      left: 48 + (props.left - worldMeta.top_left.col) * 96,
+      top: 48 + (props.top - worldMeta.top_left.row) * 96,
     };
     let popup =
       props.smthType == SmthType.Grass ? (
@@ -298,14 +377,55 @@ function Smth(props: {
   }
 }
 
-function Login(props: { setUsername: (username: string) => void }) {
+function ScrollArrow(props: {
+  direction: Direction;
+  scrollCallback: () => void;
+  mapHeight: number;
+  mapWidth: number;
+}) {
+  const position: { [key in Direction]: { left: number; top: number } } = {
+    Up: {
+      left: 48 + (props.mapWidth / 2) * 96,
+      top: 24,
+    },
+    Down: {
+      left: 48 + (props.mapWidth / 2) * 96,
+      top: 24 + (props.mapHeight + 1) * 96,
+    },
+    Left: {
+      left: 24,
+      top: ((props.mapHeight + 1) / 2) * 96,
+    },
+    Right: {
+      left: 24 + (props.mapWidth + 1) * 96,
+      top: ((props.mapHeight + 1) / 2) * 96,
+    },
+  };
+  return (
+    <button
+      className={
+        "absolute bg-yellow-500 hover:bg-yellow-300 border-yellow-300 border-b-8 border-r-8 " +
+        props.direction.toLowerCase()
+      }
+      style={{
+        left: position[props.direction].left,
+        top: position[props.direction].top,
+        width: 48,
+        height: 48,
+        zIndex: 0,
+      }}
+      onClick={props.scrollCallback}
+    ></button>
+  );
+}
+function LoginPopup(props: { setUsername: (username: string) => void }) {
   let input: RefObject<HTMLInputElement> = createRef();
   function handleSubmit(ev: FormEvent) {
     ev.preventDefault();
     props.setUsername(input.current?.value || "");
   }
   return (
-    <div className="absolute bg-yellow-600 z-10 w-3/12 text-center">
+    <div className="bg-yellow-600 z-10 w-4/12 text-center">
       <form
         className="flex flex-col m-4 bg-yellow-500 items-center"
         onSubmit={handleSubmit}

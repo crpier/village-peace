@@ -5,6 +5,7 @@ export enum ClientEventType {
   Create = "Create",
   Delete = "Delete",
   Request = "Request",
+  Refresh = "Refresh",
 }
 
 export enum ServerEventType {
@@ -12,17 +13,19 @@ export enum ServerEventType {
   Response = "Response",
 }
 
-type EventMeta = {
-  chunk: {
-    top_left: {
-      row: number;
-      col: number;
-    };
-    bottom_right: {
-      row: number;
-      col: number;
-    };
+export type WorldMeta = {
+  top_left: {
+    row: number;
+    col: number;
   };
+  bottom_right: {
+    row: number;
+    col: number;
+  };
+};
+
+type EventMeta = {
+  chunk: WorldMeta;
   username: string;
 };
 class ClientEvent {
@@ -57,19 +60,10 @@ export class WSClient {
     };
   }
 
-  initialize(host: string, worldMeta: { width: number; height: number }) {
+  initialize(host: string, worldMeta: WorldMeta) {
     this.ws = new WebSocket(host);
     this.meta = {
-      chunk: {
-        top_left: {
-          row: 0,
-          col: 0,
-        },
-        bottom_right: {
-          row: worldMeta.height,
-          col: worldMeta.width,
-        },
-      },
+      chunk: worldMeta,
       username: "",
     };
     this.ws.onopen = (_) => {
@@ -79,6 +73,12 @@ export class WSClient {
         // TODO: try smaller values here
       }, 100);
     };
+  }
+
+  updateWorldMeta(newMeta: WorldMeta) {
+    this.meta.chunk = newMeta;
+    // TODO: send refresh event instead
+    this.send_connection_notification();
   }
 
   login(username: string) {
